@@ -75,3 +75,13 @@ npm start
 **Without Venice:** Vendors could game the evaluation by probing scoring criteria.
 **Without ICME:** Policy-violating actions proceed unchecked.
 **Without x402:** Both proofs exist but payment release requires off-chain trust.
+
+## API Reference
+
+- **ICME** — [docs.icme.io](https://docs.icme.io)
+  - `POST /v1/makeRules` — Compile natural-language policy to formal logic (streams SSE, 300 credits)
+  - `POST /v1/checkIt` — Validate an action against policy (1 credit). Returns `{ check_id, result: "SAT"|"UNSAT", detail, extracted, verification_time_ms }`
+- **Venice** — [docs.venice.ai/api-reference/api-spec](https://docs.venice.ai/api-reference/api-spec)
+  - OpenAI-compatible chat completions at `https://api.venice.ai/api/v1/chat/completions`
+  - E2EE via `venice_parameters.enable_e2ee: true` — prompts encrypted on-device, decrypted only in TEE enclave
+  - [Venice E2EE blog post](https://venice.ai/blog/venice-launches-end-to-end-encrypted-ai)
