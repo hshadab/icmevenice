@@ -1,0 +1,15 @@
+{
+  "name": "icme-venice-x402-demo",
+  "version": "1.0.0",
+  "description": "ICME × Venice × x402 — Agentic Commerce Demo: AI Vendor Selection Agent with Proof-Gated Payment",
+  "main": "agent.js",
+  "type": "module",
+  "scripts": {
+    "start": "node agent.js",
+    "setup-policy": "node setup-policy.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2",
+    "openai": "^4.73.0"
+  }
+}
