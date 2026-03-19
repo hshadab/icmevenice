@@ -10,7 +10,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#07070d;--surface:#0f0f1a;--card:#13132a;--border:#1e1e3a;
-  --text:#e0e0f0;--dim:#6b6b8d;--accent:#7c5cfc;
+  --text:#e0e0f0;--dim:#a8a8c8;--accent:#7c5cfc;
   --venice:#4fc3f7;--icme:#66bb6a;--payment:#ffd54f;
   --red:#ef5350;--glow-venice:0 0 20px rgba(79,195,247,.15);
   --glow-icme:0 0 20px rgba(102,187,106,.15);
@@ -18,98 +18,144 @@
   --mono:'JetBrains Mono',monospace;--sans:'Inter',system-ui,sans-serif;
 }
 html{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6}
-body{min-height:100vh;padding:0 1rem 4rem}
+body{min-height:100vh;padding:0 1rem 2rem}
 
 /* ── Header ── */
-.header{text-align:center;padding:2.5rem 0 1.5rem}
-.header h1{font-family:var(--mono);font-size:1.4rem;font-weight:700;letter-spacing:.5px;color:var(--text)}
-.header h1 span.x{color:var(--accent);margin:0 .3rem}
+.header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem .6rem;max-width:680px;margin:0 auto}
+.header-left h1{font-family:var(--mono);font-size:1.4rem;font-weight:700;letter-spacing:.5px;color:var(--text)}
+.header-left h1 span.x{color:var(--accent);margin:0 .3rem}
+.header .subtitle{color:var(--dim);font-size:.82rem;margin-top:.15rem}
 
-/* ── Narrative intro ── */
-.narrative{max-width:720px;margin:0 auto 2rem;text-align:center;color:var(--dim);font-size:.92rem;line-height:1.7}
+/* ── Narrative ── */
+.narrative{max-width:620px;margin:0 auto 1.2rem;text-align:center;color:var(--dim);font-size:.88rem;line-height:1.7}
 .narrative strong{color:var(--text);font-weight:600}
 
-/* ── Start button ── */
-.start-wrap{text-align:center;margin-bottom:2.5rem}
+/* ── Start button (in header) ── */
 #start-btn{
-  font-family:var(--mono);font-size:1rem;font-weight:700;
-  padding:.85rem 2.5rem;border:2px solid var(--accent);border-radius:8px;
+  font-family:var(--mono);font-size:.8rem;font-weight:700;
+  padding:.5rem 1.4rem;border:2px solid var(--accent);border-radius:6px;
   background:transparent;color:var(--accent);cursor:pointer;
-  transition:all .2s;letter-spacing:.5px;position:relative;overflow:hidden;
+  transition:all .2s;letter-spacing:.5px;position:relative;overflow:hidden;white-space:nowrap;
 }
 #start-btn:hover:not(:disabled){background:var(--accent);color:#fff;box-shadow:0 0 30px rgba(124,92,252,.3)}
 #start-btn:disabled{opacity:.4;cursor:not-allowed}
-#start-btn .spinner{display:none;width:18px;height:18px;border:2px solid transparent;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:.5rem;vertical-align:middle}
-#start-btn.running .spinner{display:inline-block}
-#start-btn.running .label{opacity:.7}
+#start-btn .spinner{display:none;width:14px;height:14px;border:2px solid transparent;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:.4rem;vertical-align:middle}
+#start-btn.running{display:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ── Agent info bar ── */
 .agent-info{
-  max-width:800px;margin:0 auto 2rem;padding:.8rem 1.2rem;
+  max-width:680px;margin:0 auto 2rem;padding:.6rem 1rem;
   background:var(--surface);border:1px solid var(--border);border-radius:8px;
-  font-family:var(--mono);font-size:.78rem;color:var(--dim);
-  display:flex;flex-wrap:wrap;gap:.5rem 2rem;
+  font-family:var(--mono);font-size:.72rem;color:var(--dim);
+  display:flex;flex-wrap:wrap;gap:.4rem 1.5rem;justify-content:center;
 }
-.agent-info .item{display:flex;gap:.4rem}
+.agent-info .item{display:flex;gap:.3rem}
 .agent-info .label{color:var(--dim)}
 .agent-info .value{color:var(--text)}
 
-/* ── Step cards ── */
-.steps{max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:0}
-.connector{width:2px;height:28px;background:var(--border);margin:0 auto;position:relative}
-.connector.active{background:linear-gradient(180deg,var(--venice),var(--icme))}
-.connector.active-2{background:linear-gradient(180deg,var(--icme),var(--payment))}
+/* ── Steps container ── */
+.steps{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:0;position:relative}
 
+/* ── Progress rail (left vertical line) ── */
+.steps::before{
+  content:'';position:absolute;left:18px;top:0;bottom:0;width:2px;
+  background:var(--border);z-index:0;
+}
+
+/* ── Step card ── */
 .step-card{
-  background:var(--card);border:1px solid var(--border);border-radius:12px;
-  padding:1.4rem 1.6rem;transition:all .4s;position:relative;overflow:hidden;
+  position:relative;z-index:1;
+  transition:all .4s ease;overflow:hidden;
 }
-.step-card::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:3px;
-  background:var(--border);transition:background .4s;
-}
-.step-card[data-step="1"]::before{background:var(--border)}
-.step-card[data-step="2"]::before{background:var(--border)}
-.step-card[data-step="3"]::before{background:var(--border)}
-.step-card.active[data-step="1"]{border-color:var(--venice);box-shadow:var(--glow-venice)}
-.step-card.active[data-step="1"]::before{background:var(--venice)}
-.step-card.active[data-step="2"]{border-color:var(--icme);box-shadow:var(--glow-icme)}
-.step-card.active[data-step="2"]::before{background:var(--icme)}
-.step-card.active[data-step="3"]{border-color:var(--payment);box-shadow:var(--glow-payment)}
-.step-card.active[data-step="3"]::before{background:var(--payment)}
-.step-card.complete{opacity:1}
-.step-card.complete[data-step="1"]::before{background:var(--venice)}
-.step-card.complete[data-step="2"]::before{background:var(--icme)}
-.step-card.complete[data-step="3"]::before{background:var(--payment)}
-.step-card.blocked{border-color:var(--red)}
-.step-card.blocked::before{background:var(--red)}
-.step-card.pending{opacity:.4}
 
-.step-header{display:flex;align-items:center;gap:.7rem;margin-bottom:.6rem}
+/* ── Step header (always visible) ── */
+.step-header{
+  display:flex;align-items:center;gap:.8rem;
+  padding:.8rem 0;cursor:pointer;position:relative;
+}
 .step-num{
   font-family:var(--mono);font-size:.7rem;font-weight:700;
-  width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  border:2px solid var(--dim);color:var(--dim);flex-shrink:0;transition:all .3s;
+  width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--border);color:var(--dim);flex-shrink:0;
+  background:var(--bg);transition:all .3s;position:relative;z-index:2;
 }
-.step-card.active .step-num,.step-card.complete .step-num{border-color:currentColor}
-.step-card[data-step="1"] .step-num{color:var(--venice)}
-.step-card[data-step="2"] .step-num{color:var(--icme)}
-.step-card[data-step="3"] .step-num{color:var(--payment)}
-.step-card.complete .step-num::after{content:'✓';font-size:.8rem}
-.step-card.complete .step-num .n{display:none}
-.step-card.blocked .step-num{color:var(--red);border-color:var(--red)}
-.step-card.blocked .step-num::after{content:'✗'}
-.step-card.blocked .step-num .n{display:none}
+.step-title{font-weight:600;font-size:.95rem;color:var(--dim);transition:color .3s;display:flex;align-items:center;gap:.4rem}
+.step-title .provider{font-weight:400;font-size:inherit;color:var(--dim)}
+.step-status{margin-left:auto;font-family:var(--mono);font-size:.7rem;color:var(--dim);white-space:nowrap}
+.step-summary{
+  font-family:var(--mono);font-size:.72rem;color:var(--dim);margin-left:auto;
+  display:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:50%;
+}
 
-.step-title{font-weight:700;font-size:1.05rem}
-.step-status{margin-left:auto;font-family:var(--mono);font-size:.72rem;color:var(--dim)}
+/* ── Collapsed summary panel (visible when step is complete) ── */
+.step-result{
+  display:none;padding:.5rem .7rem .5rem 54px;
+  font-family:var(--mono);font-size:.75rem;line-height:1.7;
+}
+.step-card.complete .step-result{display:block}
+.step-card.complete.expanded .step-result{display:none}
+.step-result .result-row{display:flex;gap:.4rem;align-items:baseline}
+.step-result .result-key{color:var(--dim);flex-shrink:0}
+.step-result .result-val{color:var(--text)}
+.step-result .result-val.sat{color:var(--icme);font-weight:600}
+.step-result .result-val.unsat{color:var(--red);font-weight:600}
+.step-result a{color:var(--payment);text-decoration:none}
+.step-result a:hover{text-decoration:underline}
+.step-result .result-badges{display:flex;gap:.4rem;margin-top:.2rem}
+
+/* ── Step body (collapsible) ── */
+.step-body{
+  max-height:0;overflow:hidden;
+  transition:max-height .4s ease, opacity .3s ease, padding .3s ease;
+  opacity:0;padding:0 0 0 54px;
+}
+
+/* ── Pending state ── */
+.step-card.pending .step-num{border-color:var(--border);color:var(--dim)}
+.step-card.pending .step-title{color:var(--dim);opacity:.5}
+.step-card.pending .step-status{opacity:.5}
+
+/* ── Active state ── */
+.step-card.active .step-header{cursor:default}
+.step-card.active .step-title{color:var(--text)}
+.step-card.active .step-body{
+  max-height:800px;opacity:1;padding:0 0 1.2rem 54px;
+}
+.step-card.active[data-step="1"] .step-num{border-color:var(--venice);color:var(--venice);box-shadow:0 0 12px rgba(79,195,247,.25)}
+.step-card.active[data-step="2"] .step-num{border-color:var(--icme);color:var(--icme);box-shadow:0 0 12px rgba(102,187,106,.25)}
+.step-card.active[data-step="3"] .step-num{border-color:var(--payment);color:var(--payment);box-shadow:0 0 12px rgba(255,213,79,.25)}
 .step-card.active .step-status{color:var(--accent)}
-.step-card.complete .step-status{color:var(--icme)}
-.step-card.blocked .step-status{color:var(--red)}
 
+/* ── Complete state ── */
+.step-card.complete .step-title{color:var(--text);opacity:.8}
+.step-card.complete .step-num::after{content:'';display:none}
+.step-card.complete .step-num .n{display:none}
+.step-card.complete .step-num{font-size:0}
+.step-card.complete .step-num::before{content:'✓';font-size:.85rem}
+.step-card.complete[data-step="1"] .step-num{border-color:var(--venice);color:var(--venice);background:rgba(79,195,247,.1)}
+.step-card.complete[data-step="2"] .step-num{border-color:var(--icme);color:var(--icme);background:rgba(102,187,106,.1)}
+.step-card.complete[data-step="3"] .step-num{border-color:var(--payment);color:var(--payment);background:rgba(255,213,79,.1)}
+.step-card.complete .step-status{color:var(--icme);font-size:.68rem}
+.step-card.complete .step-summary{display:block}
+.step-card.complete .step-body{max-height:0;opacity:0;padding:0 0 0 54px}
+
+/* Expand completed step on click */
+.step-card.complete.expanded .step-body{max-height:800px;opacity:1;padding:0 0 1.2rem 54px}
+.step-card.complete.expanded .step-summary{display:none}
+
+/* ── Blocked state ── */
+.step-card.blocked .step-num{border-color:var(--red);color:var(--red);background:rgba(239,83,80,.1)}
+.step-card.blocked .step-num .n{display:none}
+.step-card.blocked .step-num::before{content:'✗';font-size:.85rem}
+.step-card.blocked .step-num{font-size:0}
+.step-card.blocked .step-title{color:var(--red)}
+.step-card.blocked .step-status{color:var(--red)}
+.step-card.blocked .step-body{max-height:800px;opacity:1;padding:0 0 1.2rem 54px}
+
+/* ── Why box ── */
 .step-why{
-  font-size:.85rem;color:var(--dim);line-height:1.65;margin-bottom:1rem;
+  font-size:.82rem;color:var(--dim);line-height:1.6;margin-bottom:1rem;
   padding:.6rem .8rem;background:rgba(255,255,255,.02);border-radius:6px;
   border-left:3px solid var(--border);
 }
@@ -120,8 +166,8 @@ body{min-height:100vh;padding:0 1rem 4rem}
 /* ── Data panels ── */
 .data-panel{
   font-family:var(--mono);font-size:.75rem;line-height:1.8;
-  background:var(--bg);border:1px solid var(--border);border-radius:8px;
-  padding:.8rem 1rem;max-height:400px;overflow-y:auto;
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:.8rem 1rem;max-height:300px;overflow-y:auto;
 }
 .data-panel:empty{display:none}
 .data-line{animation:fadeIn .3s ease}
@@ -154,19 +200,46 @@ body{min-height:100vh;padding:0 1rem 4rem}
 .tag.blocked{background:rgba(239,83,80,.15);color:var(--red)}
 .tag.ok{background:rgba(102,187,106,.1);color:var(--icme)}
 
-/* ── Receipt ── */
+/* ── Receipt (inline final step) ── */
 .receipt-card{
-  max-width:800px;margin:2rem auto 0;padding:1.4rem 1.6rem;
-  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  max-width:680px;margin:0 auto;padding:0;position:relative;z-index:1;
   display:none;
 }
 .receipt-card.show{display:block;animation:fadeIn .5s ease}
-.receipt-card h3{font-size:.95rem;margin-bottom:.8rem;color:var(--icme)}
-.receipt-card pre{
-  font-family:var(--mono);font-size:.72rem;line-height:1.7;
-  background:var(--bg);border:1px solid var(--border);border-radius:8px;
-  padding:1rem;overflow-x:auto;color:var(--text);
+.receipt-header{
+  display:flex;align-items:center;gap:.8rem;padding:.8rem 0;cursor:pointer;
 }
+.receipt-icon{
+  font-family:var(--mono);font-size:.85rem;font-weight:700;
+  width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--icme);color:var(--icme);background:rgba(102,187,106,.1);flex-shrink:0;z-index:2;position:relative;
+}
+.receipt-title{font-weight:600;font-size:.95rem;color:var(--icme)}
+.receipt-toggle{margin-left:auto;font-family:var(--mono);font-size:.68rem;color:var(--dim)}
+.receipt-body{
+  max-height:0;overflow:hidden;transition:max-height .4s ease,opacity .3s;opacity:0;
+  padding:0 0 0 54px;
+}
+.receipt-card.show.expanded .receipt-body{max-height:600px;opacity:1;overflow-y:auto}
+
+/* ── Formatted receipt ── */
+.receipt-grid{
+  font-family:var(--mono);font-size:.75rem;line-height:1.7;
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:.8rem 1rem;margin-top:.3rem;
+}
+.receipt-grid .rg-section{margin-bottom:.6rem}
+.receipt-grid .rg-section:last-child{margin-bottom:0}
+.receipt-grid .rg-heading{
+  font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--dim);margin-bottom:.25rem;padding-bottom:.2rem;border-bottom:1px solid var(--border);
+}
+.receipt-grid .rg-row{display:flex;gap:.5rem;align-items:baseline}
+.receipt-grid .rg-key{color:var(--dim);min-width:100px;flex-shrink:0}
+.receipt-grid .rg-val{color:var(--text);word-break:break-all}
+.receipt-grid a{color:var(--payment);text-decoration:none}
+.receipt-grid a:hover{text-decoration:underline}
+.receipt-grid .rg-val.ok{color:var(--icme)}
 
 /* ── API call log ── */
 .api-panel{
@@ -176,7 +249,7 @@ body{min-height:100vh;padding:0 1rem 4rem}
 .api-panel.open{max-height:500px;overflow-y:auto}
 .api-toggle{
   font-family:var(--mono);font-size:.68rem;color:var(--dim);
-  background:none;border:none;cursor:pointer;padding:.2rem 0;
+  background:none;border:none;cursor:pointer;padding:.2rem 0;margin-top:.4rem;
 }
 .api-toggle:hover{color:var(--text)}
 .api-entry{padding:.3rem 0;border-bottom:1px solid rgba(255,255,255,.03)}
@@ -188,117 +261,134 @@ body{min-height:100vh;padding:0 1rem 4rem}
 
 /* ── Responsive ── */
 @media(max-width:600px){
-  .step-card{padding:1rem 1.1rem}
+  .steps::before{left:14px}
+  .step-num{width:30px;height:30px;font-size:.6rem}
+  .step-body{padding-left:44px!important}
+  .receipt-body{padding-left:44px!important}
   .data-panel{font-size:.7rem}
-  .agent-info{font-size:.7rem;gap:.3rem 1rem}
+  .agent-info{font-size:.68rem;gap:.3rem 1rem}
 }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>ICME<span class="x">×</span>Venice<span class="x">×</span>x402</h1>
-  <p style="color:var(--dim);font-size:.88rem;margin-top:.3rem">Autonomous Procurement Agent</p>
-</div>
-
-<div class="narrative">
-  <strong>Corporation A</strong> needs to select the best cloud compute vendor from three competing bids — but it needs to keep
-  the <strong>inference private</strong> because vendors could reverse-engineer the scoring criteria and game future proposals.
-  It must use <strong>spending guardrails</strong> because autonomous agents can overspend, pay unapproved vendors, or ignore
-  expired certifications. And <strong>no payment should move</strong> unless both the private evaluation and the policy check
-  produce cryptographic proof that everything is correct.
-</div>
-
-<div class="start-wrap">
+  <div class="header-left">
+    <h1>ICME<span class="x">×</span>Venice<span class="x">×</span>x402</h1>
+    <p class="subtitle">Cryptographically Verifiable Privacy and Guardrail Enforcement for Agentic Commerce</p>
+  </div>
   <button id="start-btn" onclick="startAgent()">
     <span class="spinner"></span>
     <span class="label">START AGENT</span>
   </button>
 </div>
 
+<div class="narrative">
+  An AI agent privately evaluates three vendor bids, verifies the decision against spending policy,
+  and pays the winner on-chain — all with cryptographic proof at every step.
+</div>
+
 <div class="agent-info" id="agent-info" style="display:none"></div>
 
 <div class="steps">
   <!-- Step 1: Venice -->
-  <div class="step-card pending" data-step="1" id="step-1">
+  <div class="step-card pending" data-step="1" id="step-1" onclick="toggleComplete(1)">
     <div class="step-header">
       <div class="step-num"><span class="n">1</span></div>
-      <div class="step-title">Venice E2EE Inference</div>
+      <div class="step-title">Private AI Inference <span class="provider">using Venice.ai</span></div>
+      <span class="step-summary" id="summary-1"></span>
       <div class="step-status" id="status-1">pending</div>
     </div>
-    <div class="step-why">
-      <strong>Why E2EE?</strong> The scoring criteria (reliability 40%, price 30%, compliance 30%) and vendor
-      bid details are encrypted on-device before transmission. They're decrypted <em>only</em> inside a verified
-      hardware enclave on the GPU. Neither Venice nor the vendors can see how the scoring works — even if they
-      wanted to. The TEE attestation proves the enclave is genuine Intel TDX hardware.
+    <div class="step-result" id="result-1"></div>
+    <div class="step-body">
+      <div class="step-why">
+        Venice evaluates vendor bids inside an <strong>end-to-end encrypted</strong> TEE.
+        Scoring criteria never leave the hardware enclave — the TEE attestation proves it.
+      </div>
+      <div class="data-panel" id="data-1"></div>
+      <button class="api-toggle" onclick="event.stopPropagation();toggleApi(1)" style="display:none" id="api-toggle-1">▸ API Calls</button>
+      <div class="api-panel" id="api-1"></div>
     </div>
-    <div class="data-panel" id="data-1"></div>
-    <button class="api-toggle" onclick="toggleApi(1)" style="display:none" id="api-toggle-1">▸ API Calls</button>
-    <div class="api-panel" id="api-1"></div>
   </div>
-
-  <div class="connector" id="conn-1"></div>
 
   <!-- Step 2: ICME -->
-  <div class="step-card pending" data-step="2" id="step-2">
+  <div class="step-card pending" data-step="2" id="step-2" onclick="toggleComplete(2)">
     <div class="step-header">
       <div class="step-num"><span class="n">2</span></div>
-      <div class="step-title">ICME Policy Verification</div>
+      <div class="step-title">Cryptographic Policy Enforcement <span class="provider">using ICME Preflight</span></div>
+      <span class="step-summary" id="summary-2"></span>
       <div class="step-status" id="status-2">pending</div>
     </div>
-    <div class="step-why">
-      <strong>Why guardrails?</strong> Even the best AI can recommend a vendor that violates procurement rules —
-      unapproved vendor, expired SOC2 certification, over the spending limit. ICME compiles your plain-English
-      policy into formal logic and runs <strong>three independent solvers</strong> (Z3, Automated Reasoning, LLM)
-      to verify every action. If any rule is violated, the transaction is blocked — no exceptions, no human override needed.
+    <div class="step-result" id="result-2"></div>
+    <div class="step-body">
+      <div class="step-why">
+        ICME compiles policy into formal logic and runs <strong>three independent solvers</strong>
+        (Z3, AR, LLM) to verify compliance — no exceptions, no human override.
+      </div>
+      <div class="data-panel" id="data-2"></div>
+      <button class="api-toggle" onclick="event.stopPropagation();toggleApi(2)" style="display:none" id="api-toggle-2">▸ API Calls</button>
+      <div class="api-panel" id="api-2"></div>
     </div>
-    <div class="data-panel" id="data-2"></div>
-    <button class="api-toggle" onclick="toggleApi(2)" style="display:none" id="api-toggle-2">▸ API Calls</button>
-    <div class="api-panel" id="api-2"></div>
   </div>
 
-  <div class="connector" id="conn-2"></div>
-
   <!-- Step 3: Payment -->
-  <div class="step-card pending" data-step="3" id="step-3">
+  <div class="step-card pending" data-step="3" id="step-3" onclick="toggleComplete(3)">
     <div class="step-header">
       <div class="step-num"><span class="n">3</span></div>
-      <div class="step-title">USDC Payment — Base Sepolia</div>
+      <div class="step-title">USDC Payment <span class="provider">via x402</span></div>
+      <span class="step-summary" id="summary-3"></span>
       <div class="step-status" id="status-3">pending</div>
     </div>
-    <div class="step-why">
-      <strong>Why proof-gated payment?</strong> No payment moves unless <em>both</em> Venice (the evaluation was
-      private and ran in a real TEE) <em>and</em> ICME (the action complies with policy) have passed verification.
-      The USDC transfer is a real on-chain ERC20 transaction on Base Sepolia — you can verify it on the block explorer.
+    <div class="step-result" id="result-3"></div>
+    <div class="step-body">
+      <div class="step-why">
+        Real on-chain <strong>USDC transfer on Base Sepolia</strong> — proof-gated so no payment
+        moves unless both Venice and ICME verification have passed.
+      </div>
+      <div class="data-panel" id="data-3"></div>
+      <button class="api-toggle" onclick="event.stopPropagation();toggleApi(3)" style="display:none" id="api-toggle-3">▸ API Calls</button>
+      <div class="api-panel" id="api-3"></div>
     </div>
-    <div class="data-panel" id="data-3"></div>
-    <button class="api-toggle" onclick="toggleApi(3)" style="display:none" id="api-toggle-3">▸ API Calls</button>
-    <div class="api-panel" id="api-3"></div>
   </div>
 </div>
 
-<div class="receipt-card" id="receipt">
-  <h3>✓ Transaction Complete — Audit Receipt</h3>
-  <pre id="receipt-json"></pre>
+<!-- Receipt as inline final item -->
+<div class="receipt-card" id="receipt" onclick="this.classList.toggle('expanded')">
+  <div class="receipt-header">
+    <div class="receipt-icon">✓</div>
+    <div class="receipt-title">Transaction Complete</div>
+    <div class="receipt-toggle">click to view receipt</div>
+  </div>
+  <div class="receipt-body">
+    <div class="receipt-grid" id="receipt-content"></div>
+  </div>
 </div>
 
 <script>
+// Track collected data per step for rich summaries
+const stepData = { 1: {}, 2: {}, 3: {} };
+
 function startAgent() {
   const btn = document.getElementById('start-btn');
   btn.disabled = true;
   btn.classList.add('running');
-  document.getElementById('start-btn').querySelector('.label').textContent = 'RUNNING...';
 
   // Reset UI
   [1,2,3].forEach(s => {
     const card = document.getElementById('step-' + s);
     card.className = 'step-card pending';
+    card.classList.remove('expanded');
     document.getElementById('data-' + s).innerHTML = '';
     document.getElementById('api-' + s).innerHTML = '';
     document.getElementById('api-toggle-' + s).style.display = 'none';
     document.getElementById('status-' + s).textContent = 'pending';
+    document.getElementById('summary-' + s).textContent = '';
+    document.getElementById('result-' + s).innerHTML = '';
+    stepData[s] = {};
   });
-  document.getElementById('receipt').classList.remove('show');
+  const receipt = document.getElementById('receipt');
+  receipt.classList.remove('show', 'expanded');
+  document.getElementById('receipt-content').innerHTML = '';
   document.getElementById('agent-info').style.display = 'none';
   document.getElementById('agent-info').innerHTML = '';
 
@@ -313,35 +403,19 @@ function startAgent() {
     es.close();
     btn.disabled = false;
     btn.classList.remove('running');
-    btn.querySelector('.label').textContent = 'START AGENT';
   };
 }
 
 function handleEvent(evt) {
   const { type, step } = evt;
-
   switch (type) {
-    case 'step':
-      handleStep(evt);
-      break;
-    case 'log':
-      appendLog(step, evt.text);
-      break;
-    case 'data':
-      handleData(evt);
-      break;
-    case 'api':
-      appendApi(step, evt);
-      break;
-    case 'result':
-      handleResult(evt);
-      break;
-    case 'done':
-      handleDone(evt);
-      break;
-    case 'error':
-      handleError(evt);
-      break;
+    case 'step': handleStep(evt); break;
+    case 'log': appendLog(step, evt.text); break;
+    case 'data': handleData(evt); break;
+    case 'api': appendApi(step, evt); break;
+    case 'result': handleResult(evt); break;
+    case 'done': handleDone(evt); break;
+    case 'error': handleError(evt); break;
   }
 }
 
@@ -350,19 +424,81 @@ function handleStep(evt) {
   if (!card) return;
   const status = document.getElementById('status-' + evt.step);
 
-  card.className = 'step-card';
   if (evt.status === 'running') {
-    card.classList.add('active');
+    card.className = 'step-card active';
     status.textContent = 'running...';
   } else if (evt.status === 'complete') {
-    card.classList.add('complete');
-    status.textContent = 'complete';
-    // Activate connector
-    const conn = document.getElementById('conn-' + evt.step);
-    if (conn) conn.classList.add(evt.step === 1 ? 'active' : 'active-2');
+    // Keep step open for a few seconds so viewer can read the data
+    card.className = 'step-card complete expanded';
+    status.textContent = 'done';
+    buildStepResult(evt.step);
+    setTimeout(() => {
+      card.classList.remove('expanded');
+    }, 4000);
   } else if (evt.status === 'blocked') {
-    card.classList.add('blocked');
+    card.className = 'step-card blocked';
     status.textContent = 'BLOCKED';
+  }
+}
+
+function buildStepResult(step) {
+  const el = document.getElementById('result-' + step);
+  const d = stepData[step];
+  let html = '';
+
+  if (step === 1) {
+    const winner = d.recommendation || '—';
+    const model = d.model || '—';
+    const att = d.attestation;
+    html += row('winner', winner, 'sat');
+    html += row('model', model);
+    html += row('e2ee', d.e2ee ? '✓ yes' : '✗ no', d.e2ee ? 'sat' : 'unsat');
+    if (att) {
+      html += row('signing_address', att.signing_address || '—');
+      html += row('signing_algo', att.signing_algo || 'ecdsa');
+      html += row('nonce_verified', att.nonce_verified ? '✓ yes' : '✗ no', att.nonce_verified ? 'sat' : 'unsat');
+      html += row('intel_tdx_quote', att.has_intel_quote ? '✓ present' : '✗ missing', att.has_intel_quote ? 'sat' : 'unsat');
+      html += row('nvidia_payload', att.has_nvidia_payload ? '✓ present' : '✗ missing', att.has_nvidia_payload ? 'sat' : 'unsat');
+      if (att.intel_quote_preview) {
+        html += row('quote_preview', att.intel_quote_preview);
+      }
+    }
+  } else if (step === 2) {
+    const result = d.result || '—';
+    const cls = result === 'SAT' ? 'sat' : result === 'UNSAT' ? 'unsat' : '';
+    html += row('result', result, cls);
+    if (d.solvers) {
+      const badges = ['z3','ar','llm'].map(k => {
+        const v = d.solvers[k] || 'N/A';
+        const c = v === 'SAT' ? 'sat' : v === 'UNSAT' ? 'unsat' : '';
+        return `<span class="solver-badge ${c}">${k.toUpperCase()}: ${esc(v)}</span>`;
+      }).join('');
+      html += `<div class="result-badges">${badges}</div>`;
+    }
+    if (d.detail) html += row('detail', d.detail);
+  } else if (step === 3) {
+    const amount = d.amount || '—';
+    const recipient = d.recipient || '—';
+    const block = d.block_number || '—';
+    html += row('amount', amount);
+    html += row('to', recipient);
+    html += row('block', block);
+    if (d.explorer_url) {
+      html += `<div class="result-row"><span class="result-key">tx </span><a href="${esc(d.explorer_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">View on BaseScan ↗</a></div>`;
+    }
+  }
+
+  el.innerHTML = html;
+}
+
+function row(key, val, cls) {
+  return `<div class="result-row"><span class="result-key">${esc(key)} </span><span class="result-val ${cls || ''}">${esc(String(val))}</span></div>`;
+}
+
+function toggleComplete(step) {
+  const card = document.getElementById('step-' + step);
+  if (card.classList.contains('complete')) {
+    card.classList.toggle('expanded');
   }
 }
 
@@ -383,11 +519,7 @@ function handleData(evt) {
   if (step === 0) {
     const info = document.getElementById('agent-info');
     info.style.display = 'flex';
-    if (key === 'vendors') return; // shown in narrative
-    if (key === 'action_id') {
-      addInfoItem(key, value);
-      return;
-    }
+    if (key === 'vendors') return;
     addInfoItem(key, value);
     return;
   }
@@ -395,23 +527,15 @@ function handleData(evt) {
   const panel = document.getElementById('data-' + step);
   if (!panel) return;
 
+  // Collect data for rich summaries
+  if (step >= 1 && step <= 3) {
+    stepData[step][key] = value;
+  }
+
   // Special rendering for scores
-  if (key === 'scores') {
-    renderScores(panel, value);
-    return;
-  }
-
-  // Special rendering for solvers
-  if (key === 'solvers') {
-    renderSolvers(panel, value);
-    return;
-  }
-
-  // Special rendering for attestation
-  if (key === 'attestation' && value) {
-    renderAttestation(panel, value);
-    return;
-  }
+  if (key === 'scores') { renderScores(panel, value); return; }
+  if (key === 'solvers') { renderSolvers(panel, value); return; }
+  if (key === 'attestation' && value) { renderAttestation(panel, value); return; }
 
   // Explorer link
   if (key === 'explorer_url') {
@@ -452,7 +576,7 @@ function handleData(evt) {
 
 function renderScores(panel, scores) {
   const maxScore = Math.max(...scores.map(s => s.score));
-  let html = '<table class="scores-table"><thead><tr><th>Vendor</th><th>Score</th><th>Status</th><th>Reasoning</th></tr></thead><tbody>';
+  let html = '<table class="scores-table"><thead><tr><th>Vendor</th><th>Score</th><th>Status</th></tr></thead><tbody>';
   scores.forEach(s => {
     const isWinner = s.score === maxScore;
     const barW = Math.round((s.score / 10) * 60);
@@ -464,7 +588,6 @@ function renderScores(panel, scores) {
       <td>${esc(s.vendor)}</td>
       <td>${s.score}/10 <span class="score-bar" style="width:${barW}px"></span></td>
       <td>${tags.join('')}</td>
-      <td style="color:var(--dim);font-size:.72rem">${esc(s.reasoning)}</td>
     </tr>`;
   });
   html += '</tbody></table>';
@@ -492,11 +615,9 @@ function renderAttestation(panel, att) {
     <div style="margin:.3rem 0;padding:.5rem .7rem;background:rgba(79,195,247,.05);border-radius:6px;border:1px solid rgba(79,195,247,.15)">
       <div style="font-weight:600;color:var(--venice);margin-bottom:.3rem;font-size:.78rem">TEE Attestation</div>
       <div><span class="key">signing_address </span><span class="val">${esc(att.signing_address)}</span></div>
-      <div><span class="key">signing_algo </span><span class="val">${esc(att.signing_algo || 'ecdsa')}</span></div>
       <div><span class="key">nonce_verified </span><span class="val ${att.nonce_verified ? 'sat' : 'unsat'}">${att.nonce_verified}</span></div>
       <div><span class="key">intel_tdx_quote </span><span class="val">${att.has_intel_quote ? '✓ present' : '✗ missing'}</span></div>
       <div><span class="key">nvidia_payload </span><span class="val">${att.has_nvidia_payload ? '✓ present' : '✗ missing'}</span></div>
-      ${att.intel_quote_preview ? `<div><span class="key">quote_preview </span><span class="val" style="color:var(--dim);font-size:.65rem">${esc(att.intel_quote_preview)}</span></div>` : ''}
     </div>`;
   panel.appendChild(div);
 }
@@ -517,14 +638,52 @@ function appendApi(step, evt) {
   panel.appendChild(div);
 }
 
-function handleResult(evt) {
-  // Result events are handled by data events mostly
-}
+function handleResult(evt) {}
 
 function handleDone(evt) {
   const receipt = document.getElementById('receipt');
-  const json = document.getElementById('receipt-json');
-  json.textContent = JSON.stringify(evt.receipt, null, 2);
+  const container = document.getElementById('receipt-content');
+  const r = evt.receipt || {};
+
+  let html = '';
+
+  // Transaction section
+  html += '<div class="rg-section">';
+  html += '<div class="rg-heading">Transaction</div>';
+  html += rg('action', r.action_id);
+  html += rg('vendor', r.vendor);
+  html += rg('amount', r.amount);
+  html += rg('network', r.network);
+  if (r.txn) html += `<div class="rg-row"><span class="rg-key">tx </span><span class="rg-val" style="word-break:break-all">${esc(r.txn)}</span></div>`;
+  if (r.explorer) html += `<div class="rg-row"><span class="rg-key">explorer </span><a href="${esc(r.explorer)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(r.explorer)}</a></div>`;
+  html += '</div>';
+
+  // Venice proof section
+  if (r.proofs && r.proofs.venice) {
+    const v = r.proofs.venice;
+    html += '<div class="rg-section">';
+    html += '<div class="rg-heading">Venice Proof</div>';
+    html += rg('request_id', v.request_id);
+    html += rg('model', v.model);
+    html += `<div class="rg-row"><span class="rg-key">e2ee </span><span class="rg-val ok">${v.e2ee ? '✓ encrypted' : '✗'}</span></div>`;
+    if (v.attestation) {
+      html += `<div class="rg-row"><span class="rg-key">tee </span><span class="rg-val ok">${v.attestation.nonce_verified ? '✓ verified' : '✗ unverified'}</span></div>`;
+    }
+    html += '</div>';
+  }
+
+  // ICME proof section
+  if (r.proofs && r.proofs.icme) {
+    const c = r.proofs.icme;
+    html += '<div class="rg-section">';
+    html += '<div class="rg-heading">ICME Proof</div>';
+    html += rg('check_id', c.check_id);
+    html += rg('policy_id', c.policy_id);
+    html += `<div class="rg-row"><span class="rg-key">result </span><span class="rg-val ok">${esc(c.result)}</span></div>`;
+    html += '</div>';
+  }
+
+  container.innerHTML = html;
   receipt.classList.add('show');
 
   const btn = document.getElementById('start-btn');
@@ -533,11 +692,17 @@ function handleDone(evt) {
   btn.querySelector('.label').textContent = 'RUN AGAIN';
 }
 
+function rg(key, val) {
+  return `<div class="rg-row"><span class="rg-key">${esc(key)} </span><span class="rg-val">${esc(String(val || '—'))}</span></div>`;
+}
+
+
+
 function handleError(evt) {
   const step = evt.step || 0;
   if (step > 0) {
     const card = document.getElementById('step-' + step);
-    if (card) { card.className = 'step-card blocked'; }
+    if (card) card.className = 'step-card blocked';
     const status = document.getElementById('status-' + step);
     if (status) status.textContent = 'ERROR';
   }
@@ -548,6 +713,7 @@ function handleError(evt) {
   btn.classList.remove('running');
   btn.querySelector('.label').textContent = 'RETRY';
 }
+
 
 function toggleApi(step) {
   const panel = document.getElementById('api-' + step);
