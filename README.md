@@ -98,21 +98,21 @@ The agent will execute a **real USDC transfer** on Base Sepolia. You'll get a tr
 │     - Returns: SAT/UNSAT + check_id + zk_proof      │   │   │
 │              │                          ICME Proof   │   │   │
 │              ▼                               │       │   │   │
-│  4. x402 Payment Gate ◄─────────────────────┘───────┘   │   │
-│     - Submits BOTH proofs to payment contract           │   │
-│     - Verifies proofs reference same action_id          │   │
-│     - Releases $8,400 USDC to Vendor B atomically       │   │
+│  4. Payment Gate ◄─────────────────────────┘───────┘   │   │
+│     - Verifies both proofs locally                      │   │
+│     - Executes real ERC20 USDC transfer (Base Sepolia)  │   │
+│     - Returns on-chain tx hash + explorer link          │   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 1. **Vendor bids arrive** — three companies submit proposals with prices, uptime guarantees, and compliance info.
-2. **Venice evaluates privately** — the agent sends all bids to Venice's encrypted AI. The prompt (including scoring weights) is encrypted on your device and only decrypted inside a secure hardware enclave. Nobody — not Venice, not the vendors — can see how the scoring works.
+2. **Venice evaluates privately** — the agent sends all bids to Venice's encrypted AI. The prompt (including scoring weights) is encrypted on your device and only decrypted inside a secure hardware enclave. Nobody — not Venice, not the vendors — can see how the scoring works. The agent fetches a TEE attestation (Intel TDX quote + NVIDIA payload) to verify the enclave is genuine.
 3. **ICME checks the rules** — the agent submits structured policy variables (`isVendorOnApprovedList`, `purchaseOrderAmount`, `isVendorSOC2CertificationExpired`, etc.) to ICME's `/v1/checkIt` endpoint. Three independent solvers verify the action:
    - **Z3** — formal SMT solver, checks satisfiability of the compiled logic
    - **AR** (Automated Reasoning) — independent translation and verification
    - **LLM** — language model cross-check
    All three must agree for a confident result. If AR is uncertain but Z3 and LLM both confirm SAT, the action is still allowed.
-4. **x402 releases payment** — the payment contract receives both proofs. If and only if both are valid and reference the same decision, it releases USDC to the vendor's wallet. No human in the loop.
+4. **USDC payment** — if both proofs pass, the agent executes a real ERC20 USDC transfer on Base Sepolia. The transaction is confirmed on-chain and verifiable via [sepolia.basescan.org](https://sepolia.basescan.org). A payment record links the on-chain tx hash to both proofs and the action_id.
 
 ## ICME Policy Variables
 
@@ -153,6 +153,37 @@ The agent treats "AR uncertain" and "AR fail-closed" as SAT when both Z3 and LLM
 
 The combined guarantee: *"This payment was produced by verified private reasoning AND complies with policy — and you can prove both without trusting the agent, Venice, or ICME."*
 
+## Example Output
+
+```
+════════════════════════════════════════════════════════════════
+  ICME × VENICE × x402 — AUTONOMOUS PROCUREMENT AGENT
+════════════════════════════════════════════════════════════════
+
+Agent wallet: 0x727D2BE5631397656EB3f8F492c8FB429b3DA518
+Network:      Base Sepolia (chain 84532)
+USDC balance: 20 USDC
+
+[1] Venice E2EE inference: evaluating vendor bids privately...
+    Model: e2ee-venice-uncensored-24b-p (supportsE2EE: true)
+    Attestation verified:
+      Signing address: 0x360284A13A148c37239211F36bb627B38abe2f67
+      Nonce match:     true
+      Intel TDX quote: 040002008100000000000000939a7233f79c4ca9...
+      NVIDIA payload:  present
+    Recommended vendor: SecureCompute LLC ($0.01 USDC)
+
+[2] ICME Preflight: checking action against procurement policy...
+    Z3: SAT  AR: SAT  LLM: SAT
+    Result:   SAT (AR uncertain, confirmed by Z3+LLM)
+
+[3] Payment gate: verifying proofs + transferring USDC on Base Sepolia...
+    Tx submitted: 0x0ff23821c590111ed996b13b56ac0673d7c134b9...
+    ✓ Confirmed in block 39061394
+    ✓ 0.01 USDC transferred to 0x4391647DAB95417E3FE0ef2022Ebc6a141e80b3c
+    ✓ Explorer: https://sepolia.basescan.org/tx/0x0ff23821c590111ed996b13b56ac0673d7c134b9986a7a1b742ea0b6c7920c49
+```
+
 ## API Reference
 
 - **ICME** — [docs.icme.io](https://docs.icme.io)
@@ -188,6 +219,7 @@ The combined guarantee: *"This payment was produced by verified private reasonin
 
 | File | What it does |
 |------|-------------|
-| `agent.js` | The main demo — evaluates vendors, checks policy, releases payment |
+| `agent.js` | The main demo — evaluates vendors, checks policy, transfers USDC |
 | `setup-policy.js` | One-time setup — compiles your procurement rules into an ICME policy |
-| `.env.example` | Template for your API keys |
+| `setup-wallet.js` | Generates agent + vendor wallets for Base Sepolia testnet |
+| `.env.example` | Template for API keys and wallet configuration |
