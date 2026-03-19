@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node agent.js",
+    "demo": "node server.js",
     "setup-policy": "node setup-policy.js",
     "setup-wallet": "node setup-wallet.js"
   },
