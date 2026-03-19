@@ -53,12 +53,29 @@ npm run setup-policy
 
 It will print a `policy_id` — add that to your `.env` as `ICME_POLICY_ID`.
 
-### Step 2: Run the agent
+### Step 2: Generate wallets (Base Sepolia testnet)
+
+Creates an agent wallet and three vendor wallets. Private keys are saved to `.env`.
+
+```bash
+npm run setup-wallet
+```
+
+### Step 3: Fund the agent wallet
+
+The agent needs Base Sepolia ETH (for gas) and test USDC (for payments). The setup script prints your agent address — paste it into these faucets:
+
+1. **ETH for gas** — [Coinbase CDP Faucet](https://portal.cdp.coinbase.com/products/faucet) → select Base Sepolia
+2. **Test USDC** — [Circle Faucet](https://faucet.circle.com/) → select USDC + Base Sepolia (gives 20 USDC, we use $0.01/run)
+
+### Step 4: Run the agent
 
 ```bash
 source .env
 npm start
 ```
+
+The agent will execute a **real USDC transfer** on Base Sepolia. You'll get a transaction hash and explorer link you can verify on [sepolia.basescan.org](https://sepolia.basescan.org).
 
 ## How It Works Step by Step
 
@@ -161,10 +178,11 @@ The combined guarantee: *"This payment was produced by verified private reasonin
 | Venice TEE attestation | **Real** | Fetched via `GET /v1/tee/attestation`. Returns Intel TDX quote, NVIDIA attestation payload, signing address, and nonce verification. |
 | ICME policy compilation | **Real** | `setup-policy.js` calls `POST /v1/makeRules` to compile plain-English rules into formal logic. |
 | ICME policy check | **Real** | Live call to `POST /v1/checkIt`. Three independent solvers (Z3, AR, LLM) verify the action. Returns a real `zk_proof_id`. |
+| USDC transfer | **Real** | ERC20 `transfer()` on Base Sepolia testnet. Real on-chain transaction with verifiable tx hash on [sepolia.basescan.org](https://sepolia.basescan.org). Uses test USDC ($0.01/run). |
+| Vendor wallets | **Real** | Generated via `setup-wallet.js`. Real Base Sepolia addresses that receive USDC. |
 | Vendor bids | **Simulated** | Hardcoded array in `agent.js`, not received from an external marketplace. |
-| x402 payment gate | **Simulated** | No smart contract is called. Proof verification is local JS (`if result === 'SAT'`). |
-| USDC transfer | **Simulated** | No money moves. Transaction hash is `crypto.randomBytes(32)`. Wallet addresses are placeholders. |
-| Proof binding | **Simulated** | The `action_id` is a local variable — nothing on-chain enforces that Venice and ICME proofs reference the same decision. |
+| Proof verification | **Simulated** | Proof checks happen in local JS, not in an on-chain contract. Future: deploy a `PaymentGate.sol` that verifies proofs atomically via Automata DCAP (Venice TDX) and Groth16 (ICME ZK). |
+| Proof binding | **Simulated** | The `action_id` links proofs to payment in the audit log, but nothing on-chain enforces this binding yet. |
 
 ## Files
 

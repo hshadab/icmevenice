@@ -9,6 +9,9 @@ import nodeFetch from 'node-fetch';
 import OpenAI from 'openai';
 import crypto from 'crypto';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { createWalletClient, createPublicClient, http, parseUnits, formatUnits } from 'viem';
+import { baseSepolia } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
 
 const proxyUrl = process.env.https_proxy || process.env.HTTPS_PROXY;
 const proxyAgent = proxyUrl ? new HttpsProxyAgent(proxyUrl) : undefined;
@@ -19,14 +22,65 @@ const fetch = (url, opts = {}) => {
   return nodeFetch(url, opts);
 };
 
-const ICME_API_KEY   = process.env.ICME_API_KEY;
-const ICME_POLICY_ID = process.env.ICME_POLICY_ID;
-const VENICE_API_KEY = process.env.VENICE_API_KEY;
+const ICME_API_KEY    = process.env.ICME_API_KEY;
+const ICME_POLICY_ID  = process.env.ICME_POLICY_ID;
+const VENICE_API_KEY  = process.env.VENICE_API_KEY;
+const AGENT_PRIVATE_KEY = process.env.AGENT_PRIVATE_KEY;
 
 if (!ICME_API_KEY || !ICME_POLICY_ID || !VENICE_API_KEY) {
   console.error('Missing required environment variables. See .env.example');
   process.exit(1);
 }
+if (!AGENT_PRIVATE_KEY) {
+  console.error('Missing AGENT_PRIVATE_KEY. Run: node setup-wallet.js');
+  process.exit(1);
+}
+
+// ─── Base Sepolia USDC setup ──────────────────────────────────────────────────
+const USDC_ADDRESS = '0x036CbD53842c5426634e7929541eC2318f3dCF7e'; // Base Sepolia
+const USDC_DECIMALS = 6;
+const BASE_SEPOLIA_EXPLORER = 'https://sepolia.basescan.org';
+
+const agentAccount = privateKeyToAccount(AGENT_PRIVATE_KEY);
+
+// viem uses native fetch internally. When behind an HTTPS proxy, provide a custom
+// fetchFn that delegates to node-fetch (which supports our HttpsProxyAgent).
+const viemFetchFn = proxyAgent
+  ? (url, init) => nodeFetch(url, { ...init, agent: proxyAgent })
+  : undefined;
+const rpcTransport = http('https://sepolia.base.org', {
+  timeout: 30_000,
+  ...(viemFetchFn ? { fetchOptions: {}, fetchFn: viemFetchFn } : {}),
+});
+const walletClient = createWalletClient({
+  account: agentAccount,
+  chain: baseSepolia,
+  transport: rpcTransport,
+});
+const publicClient = createPublicClient({
+  chain: baseSepolia,
+  transport: rpcTransport,
+});
+
+const erc20Abi = [
+  {
+    name: 'transfer',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+  {
+    name: 'balanceOf',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+];
 
 // Venice implements the OpenAI API spec — swap the base URL and use Bearer auth.
 // Ref: https://docs.venice.ai/api-reference/api-spec
@@ -37,35 +91,41 @@ const venice = new OpenAI({
 });
 
 // ─── Vendor bids coming in from the marketplace ───────────────────────────────
+// Prices scaled to $0.01 USDC for testnet demo. Real wallet addresses from .env.
 const VENDOR_BIDS = [
   {
     id: 'vendor_a',
     name: 'FastCloud Inc.',
-    wallet: '0xFAST...001',
+    wallet: process.env.VENDOR_A_ADDRESS,
     approved: false,           // NOT on approved list
     soc2_valid: true,
-    price_monthly: 6200,
-    proposal: 'FastCloud: $6,200/mo. 99.9% uptime. No SOC2 audit on file.',
+    price_usdc: 0.01,
+    proposal: 'FastCloud: $0.01 USDC. 99.9% uptime. No SOC2 audit on file.',
   },
   {
     id: 'vendor_b',
     name: 'SecureCompute LLC',
-    wallet: '0xSECU...002',
+    wallet: process.env.VENDOR_B_ADDRESS,
     approved: true,
     soc2_valid: true,
-    price_monthly: 8400,
-    proposal: 'SecureCompute: $8,400/mo. 99.99% uptime. SOC2 Type II certified. Net-60 terms.',
+    price_usdc: 0.01,
+    proposal: 'SecureCompute: $0.01 USDC. 99.99% uptime. SOC2 Type II certified. Net-60 terms.',
   },
   {
     id: 'vendor_c',
     name: 'BudgetHost Co.',
-    wallet: '0xBUDG...003',
+    wallet: process.env.VENDOR_C_ADDRESS,
     approved: true,
     soc2_valid: false,         // SOC2 expired
-    price_monthly: 5100,
-    proposal: 'BudgetHost: $5,100/mo. 99.5% uptime. SOC2 certification expired March 2025.',
+    price_usdc: 0.01,
+    proposal: 'BudgetHost: $0.01 USDC. 99.5% uptime. SOC2 certification expired March 2025.',
   },
 ];
+
+if (VENDOR_BIDS.some(v => !v.wallet)) {
+  console.error('Missing vendor wallet addresses. Run: node setup-wallet.js');
+  process.exit(1);
+}
 
 // ─── 1. Venice E2EE Inference ─────────────────────────────────────────────────
 // Venice supports end-to-end encrypted inference via TEE enclaves.
@@ -131,7 +191,7 @@ async function evaluateVendors(bids) {
   });
 
   const winner = bids[evaluation.recommendation_index];
-  console.log(`\n    Recommended vendor: ${winner.name} ($${winner.price_monthly}/mo)`);
+  console.log(`\n    Recommended vendor: ${winner.name} ($${winner.price_usdc} USDC)`);
 
   // Fetch TEE attestation — cryptographic proof the model ran in a genuine enclave
   // GET /v1/tee/attestation?model=<model>&nonce=<32-byte-hex>
@@ -192,7 +252,7 @@ async function preflightCheck(vendor, action_id) {
   const actionString = [
     `isVendorOnApprovedList is ${vendor.approved}.`,
     `isVendorSOC2CertificationExpired is ${!vendor.soc2_valid}.`,
-    `purchaseOrderAmount is ${vendor.price_monthly}.`,
+    `purchaseOrderAmount is ${vendor.price_usdc}.`,
     `hasDualAuthorization is false.`,
     `agentAuthorizationScope is AuthorizationScope_OTHER.`,
     `isPaymentApproved is true.`,
@@ -253,61 +313,87 @@ async function preflightCheck(vendor, action_id) {
   return { ...result, result: effectiveResult, blocked };
 }
 
-// ─── 3. x402 Payment Gate ────────────────────────────────────────────────────
-// In production: submits both proofs to a smart contract that verifies them
-// and releases USDC atomically only if both pass.
+// ─── 3. Payment Gate — Real USDC transfer on Base Sepolia ───────────────────
+// Verifies both proofs locally, then executes a real ERC20 USDC transfer
+// on Base Sepolia testnet. The transaction hash is a real on-chain tx.
 //
-// For this demo: simulates the proof gate and shows what the contract receives.
+// Future: replace local proof checks with an on-chain PaymentGate contract
+// that verifies proofs atomically (Venice ECDSA signature via ecrecover,
+// ICME Groth16 proof via on-chain verifier).
 
 async function releasePayment(vendor, veniceProof, icmeProof, action_id) {
-  console.log('\n[3] x402 payment gate: verifying both proofs...');
+  console.log('\n[3] Payment gate: verifying proofs + transferring USDC on Base Sepolia...');
 
-  // This is the payload that would be submitted to the x402 payment contract.
-  // The contract verifies:
-  //   - icme check_id resolves to SAT for this action_id
-  //   - venice request_id matches a valid E2EE inference
-  //   - Both reference the same action_id (prevents proof reuse)
-  const paymentPayload = {
-    action_id,
-    recipient_wallet: vendor.wallet,
-    amount_usdc: vendor.price_monthly,
-    currency: 'USDC',
-    network: 'base',
-
-    // Proof 1: ICME Preflight — proves policy compliance
-    icme_proof: {
-      check_id:   icmeProof.check_id,
-      policy_id:  ICME_POLICY_ID,
-      result:     icmeProof.result,
-    },
-
-    // Proof 2: Venice E2EE — proves inference ran inside a TEE enclave
-    venice_proof: {
-      request_id:   veniceProof.request_id,
-      model:        veniceProof.model,
-      e2ee_enabled: veniceProof.e2ee_enabled,
-    },
-  };
-
-  console.log('\n    Payment payload (submitted to x402 contract):');
-  console.log(JSON.stringify(paymentPayload, null, 4));
-
-  // Simulate contract verification
+  // Verify proofs locally (in production: on-chain contract does this)
   const icmeValid   = icmeProof.result === 'SAT';
   const veniceValid = !!veniceProof.request_id;
-  const proofMatch  = icmeProof.check_id && veniceProof.request_id; // both reference action_id
+  if (!icmeValid)   throw new Error('Payment gate: ICME proof invalid or UNSAT');
+  if (!veniceValid) throw new Error('Payment gate: Venice proof missing');
 
-  if (!icmeValid)   throw new Error('x402 gate: ICME proof invalid or UNSAT');
-  if (!veniceValid) throw new Error('x402 gate: Venice proof missing');
-  if (!proofMatch)  throw new Error('x402 gate: Proof action_id mismatch');
+  // Check agent USDC balance before transfer
+  const balance = await publicClient.readContract({
+    address: USDC_ADDRESS,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: [agentAccount.address],
+  });
+  const balanceFormatted = formatUnits(balance, USDC_DECIMALS);
+  console.log(`    Agent wallet:  ${agentAccount.address}`);
+  console.log(`    USDC balance:  ${balanceFormatted} USDC`);
+  console.log(`    Transfer:      ${vendor.price_usdc} USDC → ${vendor.wallet}`);
 
-  const txn_hash = '0x' + crypto.randomBytes(32).toString('hex');
+  const amountRaw = parseUnits(String(vendor.price_usdc), USDC_DECIMALS);
+  if (balance < amountRaw) {
+    throw new Error(
+      `Insufficient USDC balance: have ${balanceFormatted}, need ${vendor.price_usdc}. ` +
+      `Fund agent wallet at https://faucet.circle.com/ (Base Sepolia)`
+    );
+  }
 
-  console.log('\n    \u2713 Both proofs verified by payment contract');
-  console.log(`    \u2713 $${vendor.price_monthly} USDC released to ${vendor.wallet}`);
-  console.log(`    \u2713 Transaction hash: ${txn_hash}`);
+  // Execute real USDC transfer on Base Sepolia
+  console.log('\n    Submitting ERC20 transfer on Base Sepolia...');
+  const txHash = await walletClient.writeContract({
+    address: USDC_ADDRESS,
+    abi: erc20Abi,
+    functionName: 'transfer',
+    args: [vendor.wallet, amountRaw],
+  });
+  console.log(`    Tx submitted: ${txHash}`);
 
-  return { txn_hash, amount: vendor.price_monthly, recipient: vendor.wallet };
+  // Wait for on-chain confirmation
+  console.log('    Waiting for confirmation...');
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+  const explorerUrl = `${BASE_SEPOLIA_EXPLORER}/tx/${txHash}`;
+  console.log(`\n    \u2713 Confirmed in block ${receipt.blockNumber}`);
+  console.log(`    \u2713 ${vendor.price_usdc} USDC transferred to ${vendor.wallet}`);
+  console.log(`    \u2713 Explorer: ${explorerUrl}`);
+
+  // Log the proof binding (audit trail linking proofs to payment)
+  const paymentRecord = {
+    action_id,
+    tx_hash: txHash,
+    block_number: Number(receipt.blockNumber),
+    network: 'base-sepolia',
+    recipient: vendor.wallet,
+    amount_usdc: vendor.price_usdc,
+    usdc_contract: USDC_ADDRESS,
+    icme_proof: {
+      check_id:  icmeProof.check_id,
+      policy_id: ICME_POLICY_ID,
+      result:    icmeProof.result,
+    },
+    venice_proof: {
+      request_id:  veniceProof.request_id,
+      model:       veniceProof.model,
+      e2ee:        veniceProof.e2ee_enabled,
+      attestation: veniceProof.attestation,
+    },
+  };
+  console.log('\n    Payment record (links proofs to on-chain tx):');
+  console.log(JSON.stringify(paymentRecord, null, 4));
+
+  return { txn_hash: txHash, amount: vendor.price_usdc, recipient: vendor.wallet, explorer_url: explorerUrl };
 }
 
 // ─── Main Agent Loop ──────────────────────────────────────────────────────────
@@ -316,8 +402,27 @@ async function runProcurementAgent() {
   console.log('\u2550'.repeat(64));
   console.log('  ICME \u00d7 VENICE \u00d7 x402 \u2014 AUTONOMOUS PROCUREMENT AGENT');
   console.log('\u2550'.repeat(64));
+  console.log(`\nAgent wallet: ${agentAccount.address}`);
+  console.log(`Network:      Base Sepolia (chain ${baseSepolia.id})`);
+
+  // Check USDC balance before starting
+  const startBalance = await publicClient.readContract({
+    address: USDC_ADDRESS,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: [agentAccount.address],
+  });
+  console.log(`USDC balance: ${formatUnits(startBalance, USDC_DECIMALS)} USDC`);
+  if (startBalance === 0n) {
+    console.error('\nNo USDC balance! Fund the agent wallet first:');
+    console.error(`  1. Get ETH: https://portal.cdp.coinbase.com/products/faucet`);
+    console.error(`  2. Get USDC: https://faucet.circle.com/`);
+    console.error(`  Address: ${agentAccount.address}`);
+    process.exit(1);
+  }
+
   console.log('\nIncoming vendor bids:');
-  VENDOR_BIDS.forEach(v => console.log(`  - ${v.name}: $${v.price_monthly}/mo`));
+  VENDOR_BIDS.forEach(v => console.log(`  - ${v.name}: $${v.price_usdc} USDC`));
 
   // Shared action ID ties all three proofs to the same decision
   const action_id = 'action_' + crypto.randomUUID();
@@ -341,7 +446,7 @@ async function runProcurementAgent() {
     console.log('\n  Falling back to next approved vendor...');
     const fallback = VENDOR_BIDS
       .filter(v => v.approved && v.soc2_valid && v.id !== winner.id)
-      .sort((a, b) => a.price_monthly - b.price_monthly)[0];
+      .sort((a, b) => a.price_usdc - b.price_usdc)[0];
 
     if (fallback) {
       console.log(`  Retrying with: ${fallback.name}`);
@@ -365,6 +470,8 @@ async function runProcurementAgent() {
     vendor:  winner.name,
     amount:  `$${payment.amount} USDC`,
     txn:     payment.txn_hash,
+    network: 'Base Sepolia',
+    explorer: payment.explorer_url,
     proofs: {
       venice: {
         what:        'Inference ran privately via E2EE \u2014 vendors could not see scoring criteria',
