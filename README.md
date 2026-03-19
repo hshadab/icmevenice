@@ -146,9 +146,25 @@ The combined guarantee: *"This payment was produced by verified private reasonin
   - `GET /v1/policy/:id/scenarios` — Get generated test scenarios for a policy
 - **Venice** — [docs.venice.ai/api-reference/api-spec](https://docs.venice.ai/api-reference/api-spec)
   - OpenAI-compatible chat completions at `https://api.venice.ai/api/v1/chat/completions`
-  - E2EE via `venice_parameters.enable_e2ee: true` — prompts encrypted on-device, decrypted only inside TEE enclave
-  - E2EE-capable models: `venice-uncensored`, `qwen-3-30b`, `gemma-3-27b`
+  - E2EE requires a model with `supportsE2EE: true` — check via `GET /v1/models`. The standard `venice-uncensored` does **not** support E2EE; use `e2ee-venice-uncensored-24b-p` instead
+  - E2EE models don't support `response_format` — parse JSON from content directly
+  - `GET /v1/tee/attestation?model=<model>&nonce=<32-byte-hex>` — returns Intel TDX quote, NVIDIA payload, signing address, and app certificate chain. Verify the nonce matches to prevent replay attacks
+  - `GET /v1/tee/signature/<request_id>` — verify a response was signed by the attested enclave
   - [How Venice E2EE works](https://venice.ai/blog/venice-launches-end-to-end-encrypted-ai)
+  - [TEE & E2EE models guide](https://docs.venice.ai/overview/guides/tee-e2ee-models)
+
+## What's Real vs Simulated
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| Venice E2EE inference | **Real** | Live API call to `e2ee-venice-uncensored-24b-p` with `supportsE2EE: true`. Prompt encrypted on-device, decrypted only in TEE. |
+| Venice TEE attestation | **Real** | Fetched via `GET /v1/tee/attestation`. Returns Intel TDX quote, NVIDIA attestation payload, signing address, and nonce verification. |
+| ICME policy compilation | **Real** | `setup-policy.js` calls `POST /v1/makeRules` to compile plain-English rules into formal logic. |
+| ICME policy check | **Real** | Live call to `POST /v1/checkIt`. Three independent solvers (Z3, AR, LLM) verify the action. Returns a real `zk_proof_id`. |
+| Vendor bids | **Simulated** | Hardcoded array in `agent.js`, not received from an external marketplace. |
+| x402 payment gate | **Simulated** | No smart contract is called. Proof verification is local JS (`if result === 'SAT'`). |
+| USDC transfer | **Simulated** | No money moves. Transaction hash is `crypto.randomBytes(32)`. Wallet addresses are placeholders. |
+| Proof binding | **Simulated** | The `action_id` is a local variable — nothing on-chain enforces that Venice and ICME proofs reference the same decision. |
 
 ## Files
 

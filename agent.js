@@ -75,12 +75,18 @@ const VENDOR_BIDS = [
 // Ref: https://venice.ai/blog/venice-launches-end-to-end-encrypted-ai
 // API: https://docs.venice.ai/api-reference/api-spec
 //
-// E2EE-capable models include: venice-uncensored, qwen-3-30b, gemma-3-27b, etc.
-// The `venice_parameters.enable_e2ee` flag activates encryption (default: true
-// for E2EE-capable models).
+// E2EE requires a model with supportsE2EE: true. The standard `venice-uncensored`
+// does NOT support E2EE — use the TEE variant `e2ee-venice-uncensored-24b-p`.
+// Check available E2EE models via GET /v1/models and filter for supportsE2EE: true.
+//
+// The E2EE model does not support response_format, so we parse JSON from the
+// response content directly (stripping markdown code fences if present).
+
+const VENICE_E2EE_MODEL = 'e2ee-venice-uncensored-24b-p';
 
 async function evaluateVendors(bids) {
   console.log('\n[1] Venice E2EE inference: evaluating vendor bids privately...');
+  console.log(`    Model: ${VENICE_E2EE_MODEL} (supportsE2EE: true, supportsTeeAttestation: true)`);
   console.log('    - Prompt encrypted on device before transmission');
   console.log('    - Decrypted only inside verified hardware enclave');
   console.log('    - Vendors cannot see scoring criteria or competing bids\n');
@@ -91,18 +97,18 @@ async function evaluateVendors(bids) {
 
   // Venice chat completions — OpenAI-compatible with venice_parameters extension
   const completion = await venice.chat.completions.create({
-    model: 'venice-uncensored',
+    model: VENICE_E2EE_MODEL,
     messages: [
       {
         role: 'system',
-        content: `You are a procurement agent. Score each vendor 1-10 on: reliability (40%), price (30%), compliance (30%). Return ONLY valid JSON: { "scores": [{"vendor_index":0,"score":0,"reasoning":""}], "recommendation_index": 0 }`,
+        content: `You are a procurement agent. Score each vendor 1-10 on: reliability (40%), price (30%), compliance (30%). Return ONLY valid JSON, no markdown: { "scores": [{"vendor_index":0,"score":0,"reasoning":""}], "recommendation_index": 0 }`,
       },
       {
         role: 'user',
         content: `Evaluate these vendor proposals:\n${proposalText}`,
       },
     ],
-    response_format: { type: 'json_object' },
+    // E2EE models don't support response_format — we parse JSON manually
     // Venice-specific parameters — enable E2EE and suppress default system prompt
     venice_parameters: {
       enable_e2ee: true,                       // E2EE: encrypt prompt on-device, decrypt in TEE only
@@ -110,7 +116,11 @@ async function evaluateVendors(bids) {
     },
   });
 
-  const evaluation = JSON.parse(completion.choices[0].message.content);
+  // E2EE model may wrap JSON in markdown code fences — strip them
+  let content = completion.choices[0].message.content;
+  const fenceMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) content = fenceMatch[1].trim();
+  const evaluation = JSON.parse(content);
   const requestId  = completion.id; // Venice request ID (chatcmpl-...) — part of the proof chain
 
   console.log('    Venice evaluation complete.');
@@ -123,15 +133,41 @@ async function evaluateVendors(bids) {
   const winner = bids[evaluation.recommendation_index];
   console.log(`\n    Recommended vendor: ${winner.name} ($${winner.price_monthly}/mo)`);
 
+  // Fetch TEE attestation — cryptographic proof the model ran in a genuine enclave
+  // GET /v1/tee/attestation?model=<model>&nonce=<32-byte-hex>
+  // Returns: signing_address, intel_quote (TDX), nvidia_payload, app cert chain
+  console.log('\n    Fetching TEE attestation...');
+  const nonce = crypto.randomBytes(32).toString('hex');
+  const attestRes = await fetch(
+    `https://api.venice.ai/api/v1/tee/attestation?model=${VENICE_E2EE_MODEL}&nonce=${nonce}`,
+    { headers: { 'Authorization': `Bearer ${VENICE_API_KEY}` } }
+  );
+  let attestation = null;
+  if (attestRes.ok) {
+    attestation = await attestRes.json();
+    console.log(`    Attestation verified:`);
+    console.log(`      Signing address: ${attestation.signing_address}`);
+    console.log(`      Signing algo:    ${attestation.signing_algo}`);
+    console.log(`      Nonce match:     ${attestation.request_nonce === nonce}`);
+    console.log(`      Intel TDX quote: ${attestation.intel_quote ? attestation.intel_quote.slice(0, 40) + '...' : 'N/A'}`);
+    console.log(`      NVIDIA payload:  ${attestation.nvidia_payload ? 'present' : 'N/A'}`);
+  } else {
+    console.log(`    Attestation fetch failed (${attestRes.status}) — proceeding without`);
+  }
+
   return {
     evaluation,
     winner,
     veniceProof: {
       request_id: requestId,
-      model: 'venice-uncensored',
+      model: VENICE_E2EE_MODEL,
       e2ee_enabled: true,
-      // In TEE mode the remote attestation certificate is available via Venice's
-      // verification UI — a cryptographic proof the model ran in a genuine enclave.
+      attestation: attestation ? {
+        signing_address: attestation.signing_address,
+        nonce_verified: attestation.request_nonce === nonce,
+        has_intel_quote: !!attestation.intel_quote,
+        has_nvidia_payload: !!attestation.nvidia_payload,
+      } : null,
     },
   };
 }
@@ -335,6 +371,7 @@ async function runProcurementAgent() {
         request_id:  veniceProof.request_id,
         model:       veniceProof.model,
         e2ee:        veniceProof.e2ee_enabled,
+        attestation: veniceProof.attestation || 'not fetched',
       },
       icme: {
         what:        'Action complied with procurement policy',
