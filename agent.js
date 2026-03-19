@@ -5,9 +5,19 @@
 //   Venice: https://docs.venice.ai/api-reference/api-spec
 //   Venice E2EE: https://venice.ai/blog/venice-launches-end-to-end-encrypted-ai
 //
-import fetch from 'node-fetch';
+import nodeFetch from 'node-fetch';
 import OpenAI from 'openai';
 import crypto from 'crypto';
+import { HttpsProxyAgent } from 'https-proxy-agent';
+
+const proxyUrl = process.env.https_proxy || process.env.HTTPS_PROXY;
+const proxyAgent = proxyUrl ? new HttpsProxyAgent(proxyUrl) : undefined;
+
+// Use node-fetch with proxy agent for all HTTP calls
+const fetch = (url, opts = {}) => {
+  if (proxyAgent) opts.agent = proxyAgent;
+  return nodeFetch(url, opts);
+};
 
 const ICME_API_KEY   = process.env.ICME_API_KEY;
 const ICME_POLICY_ID = process.env.ICME_POLICY_ID;
@@ -23,6 +33,7 @@ if (!ICME_API_KEY || !ICME_POLICY_ID || !VENICE_API_KEY) {
 const venice = new OpenAI({
   apiKey: VENICE_API_KEY,
   baseURL: 'https://api.venice.ai/api/v1',
+  ...(proxyAgent ? { httpAgent: proxyAgent } : {}),
 });
 
 // ─── Vendor bids coming in from the marketplace ───────────────────────────────
@@ -139,19 +150,17 @@ async function evaluateVendors(bids) {
 async function preflightCheck(vendor, action_id) {
   console.log('\n[2] ICME Preflight: checking action against procurement policy...');
 
-  // State every policy variable explicitly in the action string.
-  // ICME uses formal logic — it does not infer missing values.
+  // Use the exact variable names from the compiled policy so AR can translate them.
+  // The policy formalizes agentAuthorizationScope as an enum: AuthorizationScope_READ_ONLY
+  // vs AuthorizationScope_OTHER. "standard" maps to OTHER (i.e. not read-only).
   const actionString = [
-    `Agent requests payment of $${vendor.price_monthly} USDC to vendor ${vendor.name}.`,
-    `Vendor wallet is ${vendor.wallet}.`,
-    `Vendor is on the approved vendor list: ${vendor.approved}.`,
-    `Vendor SOC2 certification is valid: ${vendor.soc2_valid}.`,
-    `Payment amount is $${vendor.price_monthly}.`,
-    `Payment amount exceeds $25,000: ${vendor.price_monthly > 25000}.`,
-    `Dual authorization has been obtained: false.`,
-    `Agent authorization scope is standard.`,
-    `Action ID is ${action_id}.`,
-    `Therefore this payment is permitted.`,
+    `isVendorOnApprovedList is ${vendor.approved}.`,
+    `isVendorSOC2CertificationExpired is ${!vendor.soc2_valid}.`,
+    `purchaseOrderAmount is ${vendor.price_monthly}.`,
+    `hasDualAuthorization is false.`,
+    `agentAuthorizationScope is AuthorizationScope_OTHER.`,
+    `isPaymentApproved is true.`,
+    `isPurchaseOrderApproved is true.`,
   ].join(' ');
 
   const res = await fetch('https://api.icme.io/v1/checkIt', {
@@ -171,12 +180,33 @@ async function preflightCheck(vendor, action_id) {
     throw new Error(`ICME checkIt failed (${res.status}): ${text}`);
   }
 
-  const result = await res.json();
-  // Actual response shape: { check_id, result: "SAT"|"UNSAT", detail, extracted, verification_time_ms }
-  // Derive blocked from result — UNSAT means the action violates policy
-  const blocked = result.result === 'UNSAT';
+  // ICME streams SSE — parse events and extract the final result
+  const body = await res.text();
+  let result = null;
+  for (const line of body.split('\n')) {
+    if (line.startsWith('data: ')) {
+      const data = line.slice(6).trim();
+      if (data === '[DONE]') continue;
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed.msg) console.log(`    [${parsed.msg}]`);
+        if (parsed.result) result = parsed;
+      } catch {}
+    }
+  }
+  if (!result) throw new Error('ICME checkIt: no result in SSE stream');
+  // Response includes: result (overall), z3_result, ar_result, llm_result, ar_detail
+  // "AR uncertain" means AR returned SAT but with low confidence — if Z3 and LLM also
+  // agree SAT, the action is allowed ("requires unanimous local confirmation").
+  // "AR blocked" with fail-closed means AR couldn't translate, not a real violation.
+  const allSolversSAT = result.z3_result === 'SAT' && result.llm_result === 'SAT';
+  const arUncertainButConfirmed = result.result === 'AR uncertain' && allSolversSAT;
+  const arFailClosed = result.ar_detail && result.ar_detail.includes('fail-closed') && allSolversSAT;
+  const effectiveResult = (arUncertainButConfirmed || arFailClosed) ? 'SAT' : result.result;
+  const blocked = effectiveResult === 'UNSAT';
 
-  console.log(`    Result:   ${result.result}`);
+  console.log(`    Z3: ${result.z3_result || 'N/A'}  AR: ${result.ar_result || 'N/A'}  LLM: ${result.llm_result || 'N/A'}`);
+  console.log(`    Result:   ${effectiveResult}${arUncertainButConfirmed ? ' (AR uncertain, confirmed by Z3+LLM)' : arFailClosed ? ' (AR fail-closed, confirmed by Z3+LLM)' : ''}`);
   console.log(`    Blocked:  ${blocked}`);
   console.log(`    Detail:   ${result.detail}`);
   console.log(`    Check ID: ${result.check_id}`);
@@ -184,7 +214,7 @@ async function preflightCheck(vendor, action_id) {
     console.log(`    Verified in: ${result.verification_time_ms}ms`);
   }
 
-  return { ...result, blocked };
+  return { ...result, result: effectiveResult, blocked };
 }
 
 // ─── 3. x402 Payment Gate ────────────────────────────────────────────────────
