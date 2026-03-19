@@ -1,5 +1,7 @@
 # ICME × Venice × x402 — Agentic Commerce Demo
 
+> **ICME Documentation:** [docs.icme.io](https://docs.icme.io) — policy compilation, preflight checks, three-solver verification, and API reference.
+
 **AI Vendor Selection Agent with Proof-Gated Payment**
 
 ## What This Does (Plain English)

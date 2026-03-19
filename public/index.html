@@ -10,7 +10,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#07070d;--surface:#0f0f1a;--card:#13132a;--border:#1e1e3a;
-  --text:#e0e0f0;--dim:#6b6b8d;--accent:#7c5cfc;
+  --text:#e0e0f0;--dim:#a8a8c8;--accent:#7c5cfc;
   --venice:#4fc3f7;--icme:#66bb6a;--payment:#ffd54f;
   --red:#ef5350;--glow-venice:0 0 20px rgba(79,195,247,.15);
   --glow-icme:0 0 20px rgba(102,187,106,.15);
@@ -18,31 +18,29 @@
   --mono:'JetBrains Mono',monospace;--sans:'Inter',system-ui,sans-serif;
 }
 html{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6}
-body{min-height:100vh;padding:0 1rem 4rem}
+body{min-height:100vh;padding:0 1rem 2rem}
 
 /* ── Header ── */
-.header{text-align:center;padding:2.5rem 0 1rem}
-.header h1{font-family:var(--mono);font-size:1.4rem;font-weight:700;letter-spacing:.5px;color:var(--text)}
-.header h1 span.x{color:var(--accent);margin:0 .3rem}
-.header .subtitle{color:var(--dim);font-size:.88rem;margin-top:.3rem}
+.header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem .6rem;max-width:680px;margin:0 auto}
+.header-left h1{font-family:var(--mono);font-size:1.4rem;font-weight:700;letter-spacing:.5px;color:var(--text)}
+.header-left h1 span.x{color:var(--accent);margin:0 .3rem}
+.header .subtitle{color:var(--dim);font-size:.82rem;margin-top:.15rem}
 
 /* ── Narrative ── */
-.narrative{max-width:620px;margin:0 auto 2rem;text-align:center;color:var(--dim);font-size:.88rem;line-height:1.7}
+.narrative{max-width:620px;margin:0 auto 1.2rem;text-align:center;color:var(--dim);font-size:.88rem;line-height:1.7}
 .narrative strong{color:var(--text);font-weight:600}
 
-/* ── Start button ── */
-.start-wrap{text-align:center;margin-bottom:2.5rem}
+/* ── Start button (in header) ── */
 #start-btn{
-  font-family:var(--mono);font-size:1rem;font-weight:700;
-  padding:.85rem 2.5rem;border:2px solid var(--accent);border-radius:8px;
+  font-family:var(--mono);font-size:.8rem;font-weight:700;
+  padding:.5rem 1.4rem;border:2px solid var(--accent);border-radius:6px;
   background:transparent;color:var(--accent);cursor:pointer;
-  transition:all .2s;letter-spacing:.5px;position:relative;overflow:hidden;
+  transition:all .2s;letter-spacing:.5px;position:relative;overflow:hidden;white-space:nowrap;
 }
 #start-btn:hover:not(:disabled){background:var(--accent);color:#fff;box-shadow:0 0 30px rgba(124,92,252,.3)}
 #start-btn:disabled{opacity:.4;cursor:not-allowed}
-#start-btn .spinner{display:none;width:18px;height:18px;border:2px solid transparent;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:.5rem;vertical-align:middle}
-#start-btn.running .spinner{display:inline-block}
-#start-btn.running .label{opacity:.7}
+#start-btn .spinner{display:none;width:14px;height:14px;border:2px solid transparent;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:.4rem;vertical-align:middle}
+#start-btn.running{display:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ── Agent info bar ── */
@@ -82,12 +80,29 @@ body{min-height:100vh;padding:0 1rem 4rem}
   border:2px solid var(--border);color:var(--dim);flex-shrink:0;
   background:var(--bg);transition:all .3s;position:relative;z-index:2;
 }
-.step-title{font-weight:600;font-size:.95rem;color:var(--dim);transition:color .3s}
+.step-title{font-weight:600;font-size:.95rem;color:var(--dim);transition:color .3s;display:flex;align-items:center;gap:.4rem}
+.step-title .provider{font-weight:400;font-size:inherit;color:var(--dim)}
 .step-status{margin-left:auto;font-family:var(--mono);font-size:.7rem;color:var(--dim);white-space:nowrap}
 .step-summary{
   font-family:var(--mono);font-size:.72rem;color:var(--dim);margin-left:auto;
   display:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:50%;
 }
+
+/* ── Collapsed summary panel (visible when step is complete) ── */
+.step-result{
+  display:none;padding:.5rem .7rem .5rem 54px;
+  font-family:var(--mono);font-size:.75rem;line-height:1.7;
+}
+.step-card.complete .step-result{display:block}
+.step-card.complete.expanded .step-result{display:none}
+.step-result .result-row{display:flex;gap:.4rem;align-items:baseline}
+.step-result .result-key{color:var(--dim);flex-shrink:0}
+.step-result .result-val{color:var(--text)}
+.step-result .result-val.sat{color:var(--icme);font-weight:600}
+.step-result .result-val.unsat{color:var(--red);font-weight:600}
+.step-result a{color:var(--payment);text-decoration:none}
+.step-result a:hover{text-decoration:underline}
+.step-result .result-badges{display:flex;gap:.4rem;margin-top:.2rem}
 
 /* ── Step body (collapsible) ── */
 .step-body{
@@ -206,11 +221,25 @@ body{min-height:100vh;padding:0 1rem 4rem}
   padding:0 0 0 54px;
 }
 .receipt-card.show.expanded .receipt-body{max-height:600px;opacity:1;overflow-y:auto}
-.receipt-card pre{
-  font-family:var(--mono);font-size:.7rem;line-height:1.6;
+
+/* ── Formatted receipt ── */
+.receipt-grid{
+  font-family:var(--mono);font-size:.75rem;line-height:1.7;
   background:var(--surface);border:1px solid var(--border);border-radius:8px;
-  padding:.8rem 1rem;overflow-x:auto;color:var(--text);margin-top:.3rem;
+  padding:.8rem 1rem;margin-top:.3rem;
 }
+.receipt-grid .rg-section{margin-bottom:.6rem}
+.receipt-grid .rg-section:last-child{margin-bottom:0}
+.receipt-grid .rg-heading{
+  font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--dim);margin-bottom:.25rem;padding-bottom:.2rem;border-bottom:1px solid var(--border);
+}
+.receipt-grid .rg-row{display:flex;gap:.5rem;align-items:baseline}
+.receipt-grid .rg-key{color:var(--dim);min-width:100px;flex-shrink:0}
+.receipt-grid .rg-val{color:var(--text);word-break:break-all}
+.receipt-grid a{color:var(--payment);text-decoration:none}
+.receipt-grid a:hover{text-decoration:underline}
+.receipt-grid .rg-val.ok{color:var(--icme)}
 
 /* ── API call log ── */
 .api-panel{
@@ -244,20 +273,19 @@ body{min-height:100vh;padding:0 1rem 4rem}
 <body>
 
 <div class="header">
-  <h1>ICME<span class="x">×</span>Venice<span class="x">×</span>x402</h1>
-  <p class="subtitle">Autonomous Procurement Agent</p>
+  <div class="header-left">
+    <h1>ICME<span class="x">×</span>Venice<span class="x">×</span>x402</h1>
+    <p class="subtitle">Cryptographically Verifiable Privacy and Guardrail Enforcement for Agentic Commerce</p>
+  </div>
+  <button id="start-btn" onclick="startAgent()">
+    <span class="spinner"></span>
+    <span class="label">START AGENT</span>
+  </button>
 </div>
 
 <div class="narrative">
   An AI agent privately evaluates three vendor bids, verifies the decision against spending policy,
   and pays the winner on-chain — all with cryptographic proof at every step.
-</div>
-
-<div class="start-wrap">
-  <button id="start-btn" onclick="startAgent()">
-    <span class="spinner"></span>
-    <span class="label">START AGENT</span>
-  </button>
 </div>
 
 <div class="agent-info" id="agent-info" style="display:none"></div>
@@ -267,10 +295,11 @@ body{min-height:100vh;padding:0 1rem 4rem}
   <div class="step-card pending" data-step="1" id="step-1" onclick="toggleComplete(1)">
     <div class="step-header">
       <div class="step-num"><span class="n">1</span></div>
-      <div class="step-title">Private AI Inference</div>
+      <div class="step-title">Private AI Inference <span class="provider">using Venice.ai</span></div>
       <span class="step-summary" id="summary-1"></span>
       <div class="step-status" id="status-1">pending</div>
     </div>
+    <div class="step-result" id="result-1"></div>
     <div class="step-body">
       <div class="step-why">
         Venice evaluates vendor bids inside an <strong>end-to-end encrypted</strong> TEE.
@@ -286,10 +315,11 @@ body{min-height:100vh;padding:0 1rem 4rem}
   <div class="step-card pending" data-step="2" id="step-2" onclick="toggleComplete(2)">
     <div class="step-header">
       <div class="step-num"><span class="n">2</span></div>
-      <div class="step-title">Policy Enforcement</div>
+      <div class="step-title">Cryptographic Policy Enforcement <span class="provider">using ICME Preflight</span></div>
       <span class="step-summary" id="summary-2"></span>
       <div class="step-status" id="status-2">pending</div>
     </div>
+    <div class="step-result" id="result-2"></div>
     <div class="step-body">
       <div class="step-why">
         ICME compiles policy into formal logic and runs <strong>three independent solvers</strong>
@@ -305,10 +335,11 @@ body{min-height:100vh;padding:0 1rem 4rem}
   <div class="step-card pending" data-step="3" id="step-3" onclick="toggleComplete(3)">
     <div class="step-header">
       <div class="step-num"><span class="n">3</span></div>
-      <div class="step-title">USDC Payment</div>
+      <div class="step-title">USDC Payment <span class="provider">via x402</span></div>
       <span class="step-summary" id="summary-3"></span>
       <div class="step-status" id="status-3">pending</div>
     </div>
+    <div class="step-result" id="result-3"></div>
     <div class="step-body">
       <div class="step-why">
         Real on-chain <strong>USDC transfer on Base Sepolia</strong> — proof-gated so no payment
@@ -329,19 +360,18 @@ body{min-height:100vh;padding:0 1rem 4rem}
     <div class="receipt-toggle">click to view receipt</div>
   </div>
   <div class="receipt-body">
-    <pre id="receipt-json"></pre>
+    <div class="receipt-grid" id="receipt-content"></div>
   </div>
 </div>
 
 <script>
-// Track summary text per step
-const stepSummaries = {};
+// Track collected data per step for rich summaries
+const stepData = { 1: {}, 2: {}, 3: {} };
 
 function startAgent() {
   const btn = document.getElementById('start-btn');
   btn.disabled = true;
   btn.classList.add('running');
-  btn.querySelector('.label').textContent = 'RUNNING...';
 
   // Reset UI
   [1,2,3].forEach(s => {
@@ -353,10 +383,12 @@ function startAgent() {
     document.getElementById('api-toggle-' + s).style.display = 'none';
     document.getElementById('status-' + s).textContent = 'pending';
     document.getElementById('summary-' + s).textContent = '';
-    stepSummaries[s] = '';
+    document.getElementById('result-' + s).innerHTML = '';
+    stepData[s] = {};
   });
   const receipt = document.getElementById('receipt');
   receipt.classList.remove('show', 'expanded');
+  document.getElementById('receipt-content').innerHTML = '';
   document.getElementById('agent-info').style.display = 'none';
   document.getElementById('agent-info').innerHTML = '';
 
@@ -371,7 +403,6 @@ function startAgent() {
     es.close();
     btn.disabled = false;
     btn.classList.remove('running');
-    btn.querySelector('.label').textContent = 'START AGENT';
   };
 }
 
@@ -397,17 +428,71 @@ function handleStep(evt) {
     card.className = 'step-card active';
     status.textContent = 'running...';
   } else if (evt.status === 'complete') {
-    card.className = 'step-card complete';
+    // Keep step open for a few seconds so viewer can read the data
+    card.className = 'step-card complete expanded';
     status.textContent = 'done';
-    // Set summary text
-    const sum = document.getElementById('summary-' + evt.step);
-    if (stepSummaries[evt.step]) {
-      sum.textContent = stepSummaries[evt.step];
-    }
+    buildStepResult(evt.step);
+    setTimeout(() => {
+      card.classList.remove('expanded');
+    }, 4000);
   } else if (evt.status === 'blocked') {
     card.className = 'step-card blocked';
     status.textContent = 'BLOCKED';
   }
+}
+
+function buildStepResult(step) {
+  const el = document.getElementById('result-' + step);
+  const d = stepData[step];
+  let html = '';
+
+  if (step === 1) {
+    const winner = d.recommendation || '—';
+    const model = d.model || '—';
+    const att = d.attestation;
+    html += row('winner', winner, 'sat');
+    html += row('model', model);
+    html += row('e2ee', d.e2ee ? '✓ yes' : '✗ no', d.e2ee ? 'sat' : 'unsat');
+    if (att) {
+      html += row('signing_address', att.signing_address || '—');
+      html += row('signing_algo', att.signing_algo || 'ecdsa');
+      html += row('nonce_verified', att.nonce_verified ? '✓ yes' : '✗ no', att.nonce_verified ? 'sat' : 'unsat');
+      html += row('intel_tdx_quote', att.has_intel_quote ? '✓ present' : '✗ missing', att.has_intel_quote ? 'sat' : 'unsat');
+      html += row('nvidia_payload', att.has_nvidia_payload ? '✓ present' : '✗ missing', att.has_nvidia_payload ? 'sat' : 'unsat');
+      if (att.intel_quote_preview) {
+        html += row('quote_preview', att.intel_quote_preview);
+      }
+    }
+  } else if (step === 2) {
+    const result = d.result || '—';
+    const cls = result === 'SAT' ? 'sat' : result === 'UNSAT' ? 'unsat' : '';
+    html += row('result', result, cls);
+    if (d.solvers) {
+      const badges = ['z3','ar','llm'].map(k => {
+        const v = d.solvers[k] || 'N/A';
+        const c = v === 'SAT' ? 'sat' : v === 'UNSAT' ? 'unsat' : '';
+        return `<span class="solver-badge ${c}">${k.toUpperCase()}: ${esc(v)}</span>`;
+      }).join('');
+      html += `<div class="result-badges">${badges}</div>`;
+    }
+    if (d.detail) html += row('detail', d.detail);
+  } else if (step === 3) {
+    const amount = d.amount || '—';
+    const recipient = d.recipient || '—';
+    const block = d.block_number || '—';
+    html += row('amount', amount);
+    html += row('to', recipient);
+    html += row('block', block);
+    if (d.explorer_url) {
+      html += `<div class="result-row"><span class="result-key">tx </span><a href="${esc(d.explorer_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">View on BaseScan ↗</a></div>`;
+    }
+  }
+
+  el.innerHTML = html;
+}
+
+function row(key, val, cls) {
+  return `<div class="result-row"><span class="result-key">${esc(key)} </span><span class="result-val ${cls || ''}">${esc(String(val))}</span></div>`;
 }
 
 function toggleComplete(step) {
@@ -442,15 +527,9 @@ function handleData(evt) {
   const panel = document.getElementById('data-' + step);
   if (!panel) return;
 
-  // Build summary for collapsed view
-  if (step === 1 && key === 'winner') {
-    stepSummaries[1] = 'Winner: ' + value;
-  }
-  if (step === 2 && key === 'result') {
-    stepSummaries[2] = 'Result: ' + value;
-  }
-  if (step === 3 && key === 'tx_hash') {
-    stepSummaries[3] = 'Tx: ' + String(value).slice(0, 14) + '...';
+  // Collect data for rich summaries
+  if (step >= 1 && step <= 3) {
+    stepData[step][key] = value;
   }
 
   // Special rendering for scores
@@ -563,8 +642,48 @@ function handleResult(evt) {}
 
 function handleDone(evt) {
   const receipt = document.getElementById('receipt');
-  const json = document.getElementById('receipt-json');
-  json.textContent = JSON.stringify(evt.receipt, null, 2);
+  const container = document.getElementById('receipt-content');
+  const r = evt.receipt || {};
+
+  let html = '';
+
+  // Transaction section
+  html += '<div class="rg-section">';
+  html += '<div class="rg-heading">Transaction</div>';
+  html += rg('action', r.action_id);
+  html += rg('vendor', r.vendor);
+  html += rg('amount', r.amount);
+  html += rg('network', r.network);
+  if (r.txn) html += `<div class="rg-row"><span class="rg-key">tx </span><span class="rg-val" style="word-break:break-all">${esc(r.txn)}</span></div>`;
+  if (r.explorer) html += `<div class="rg-row"><span class="rg-key">explorer </span><a href="${esc(r.explorer)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(r.explorer)}</a></div>`;
+  html += '</div>';
+
+  // Venice proof section
+  if (r.proofs && r.proofs.venice) {
+    const v = r.proofs.venice;
+    html += '<div class="rg-section">';
+    html += '<div class="rg-heading">Venice Proof</div>';
+    html += rg('request_id', v.request_id);
+    html += rg('model', v.model);
+    html += `<div class="rg-row"><span class="rg-key">e2ee </span><span class="rg-val ok">${v.e2ee ? '✓ encrypted' : '✗'}</span></div>`;
+    if (v.attestation) {
+      html += `<div class="rg-row"><span class="rg-key">tee </span><span class="rg-val ok">${v.attestation.nonce_verified ? '✓ verified' : '✗ unverified'}</span></div>`;
+    }
+    html += '</div>';
+  }
+
+  // ICME proof section
+  if (r.proofs && r.proofs.icme) {
+    const c = r.proofs.icme;
+    html += '<div class="rg-section">';
+    html += '<div class="rg-heading">ICME Proof</div>';
+    html += rg('check_id', c.check_id);
+    html += rg('policy_id', c.policy_id);
+    html += `<div class="rg-row"><span class="rg-key">result </span><span class="rg-val ok">${esc(c.result)}</span></div>`;
+    html += '</div>';
+  }
+
+  container.innerHTML = html;
   receipt.classList.add('show');
 
   const btn = document.getElementById('start-btn');
@@ -572,6 +691,12 @@ function handleDone(evt) {
   btn.classList.remove('running');
   btn.querySelector('.label').textContent = 'RUN AGAIN';
 }
+
+function rg(key, val) {
+  return `<div class="rg-row"><span class="rg-key">${esc(key)} </span><span class="rg-val">${esc(String(val || '—'))}</span></div>`;
+}
+
+
 
 function handleError(evt) {
   const step = evt.step || 0;
@@ -588,6 +713,7 @@ function handleError(evt) {
   btn.classList.remove('running');
   btn.querySelector('.label').textContent = 'RETRY';
 }
+
 
 function toggleApi(step) {
   const panel = document.getElementById('api-' + step);
