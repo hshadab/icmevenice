@@ -275,7 +275,7 @@ body{min-height:100vh;padding:0 1rem 2rem}
 <div class="header">
   <div class="header-left">
     <h1>ICME<span class="x">×</span>Venice<span class="x">×</span>x402</h1>
-    <p class="subtitle">Cryptographically Verifiable Privacy and Guardrail Enforcement for Agentic Commerce</p>
+    <p class="subtitle">Cryptographically Verifiable Privacy and Guardrails for Agentic Commerce</p>
   </div>
   <button id="start-btn" onclick="startAgent()">
     <span class="spinner"></span>
@@ -434,7 +434,7 @@ function handleStep(evt) {
     buildStepResult(evt.step);
     setTimeout(() => {
       card.classList.remove('expanded');
-    }, 4000);
+    }, 7000);
   } else if (evt.status === 'blocked') {
     card.className = 'step-card blocked';
     status.textContent = 'BLOCKED';

@@ -12,11 +12,13 @@ Imagine you need to buy cloud computing from one of three vendors. Instead of a 
 
 2. **ICME enforces your company's rules.** Before any money moves, ICME checks the agent's decision against your procurement policy: Is the vendor on the approved list? Is the amount under the spending limit? Is their SOC2 certification current? If any rule is violated, the transaction is blocked — no exceptions. ICME uses three independent solvers (Z3, Automated Reasoning, and LLM) for defense-in-depth verification.
 
-3. **x402 only releases payment when both checks pass.** The payment contract won't send a single dollar unless it receives proof from *both* Venice (the evaluation was private) and ICME (the action follows policy). No proof, no payment. No trust required.
+3. **x402 gates payment on both checks passing.** The agent won't release a single dollar unless it has proof from *both* Venice (the evaluation was private) and ICME (the action follows policy). No proof, no payment. (In this demo, proof verification happens in local code; a future on-chain `PaymentGate.sol` contract would make enforcement fully trustless.)
 
 **The bottom line:** The agent can't overspend, can't pay unapproved vendors, can't be gamed by vendors who peek at the criteria, and can't release money without cryptographic proof that everything checks out.
 
 ### A Quick Example
+
+*Conceptual scenario (the demo uses $0.01 test USDC on Base Sepolia):*
 
 Three vendors bid on a cloud compute contract:
 
@@ -24,7 +26,7 @@ Three vendors bid on a cloud compute contract:
 - **SecureCompute** — $8,400/mo, approved, SOC2 certified, 99.99% uptime
 - **BudgetHost** — $5,100/mo, approved, but SOC2 certification expired
 
-The agent privately scores all three. Venice recommends SecureCompute as the best option. ICME confirms the payment complies with policy (approved vendor, valid SOC2, under $25K limit). The x402 payment contract verifies both proofs and releases $8,400 USDC to SecureCompute.
+The agent privately scores all three. Venice recommends SecureCompute as the best option. ICME confirms the payment complies with policy (approved vendor, valid SOC2, under $25K limit). The agent verifies both proofs and releases payment to SecureCompute.
 
 If Venice had recommended BudgetHost (cheapest), ICME would have blocked it — expired SOC2 violates policy. The agent then falls back to the next compliant vendor. Neither system alone gets the right answer. Together, they do.
 
@@ -41,7 +43,7 @@ cp .env.example .env
 ```
 
 You'll need:
-- **ICME_API_KEY** — sign up at [icme.io](https://icme.io)
+- **ICME_API_KEY** — sign up at [docs.icme.io](https://docs.icme.io)
 - **VENICE_API_KEY** — get one at [venice.ai/settings/api](https://venice.ai/settings/api)
 
 ### Step 1: Create the procurement policy
@@ -151,7 +153,7 @@ The agent treats "AR uncertain" and "AR fail-closed" as SAT when both Z3 and LLM
 |------------|----------------|
 | **Venice** | Vendors could reverse-engineer the scoring criteria and game their proposals to win unfairly. |
 | **ICME** | The AI might recommend a vendor that violates your company's rules — wrong vendor list, expired certifications, over budget — and the payment goes through anyway. |
-| **x402** | You have two nice proofs but no way to enforce them. Payment still depends on someone (or some code) you have to trust. The smart contract makes enforcement automatic and trustless. |
+| **x402** | You have two nice proofs but no way to enforce them. Payment still depends on someone (or some code) you have to trust. Proof-gated payment makes enforcement automatic. (In this demo, enforcement is in local code; an on-chain contract would make it fully trustless.) |
 
 The combined guarantee: *"This payment was produced by verified private reasoning AND complies with policy — and you can prove both without trusting the agent, Venice, or ICME."*
 
@@ -159,7 +161,7 @@ The combined guarantee: *"This payment was produced by verified private reasonin
 
 ```
 ════════════════════════════════════════════════════════════════
-  ICME × VENICE × x402 — AUTONOMOUS PROCUREMENT AGENT
+  ICME × VENICE × x402 — AGENTIC COMMERCE DEMO
 ════════════════════════════════════════════════════════════════
 
 Agent wallet: 0x727D2BE5631397656EB3f8F492c8FB429b3DA518
