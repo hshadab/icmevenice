@@ -5,9 +5,19 @@
 //   Venice: https://docs.venice.ai/api-reference/api-spec
 //   Venice E2EE: https://venice.ai/blog/venice-launches-end-to-end-encrypted-ai
 //
-import fetch from 'node-fetch';
+import nodeFetch from 'node-fetch';
 import OpenAI from 'openai';
 import crypto from 'crypto';
+import { HttpsProxyAgent } from 'https-proxy-agent';
+
+const proxyUrl = process.env.https_proxy || process.env.HTTPS_PROXY;
+const proxyAgent = proxyUrl ? new HttpsProxyAgent(proxyUrl) : undefined;
+
+// Use node-fetch with proxy agent for all HTTP calls
+const fetch = (url, opts = {}) => {
+  if (proxyAgent) opts.agent = proxyAgent;
+  return nodeFetch(url, opts);
+};
 
 const ICME_API_KEY   = process.env.ICME_API_KEY;
 const ICME_POLICY_ID = process.env.ICME_POLICY_ID;
@@ -23,6 +33,7 @@ if (!ICME_API_KEY || !ICME_POLICY_ID || !VENICE_API_KEY) {
 const venice = new OpenAI({
   apiKey: VENICE_API_KEY,
   baseURL: 'https://api.venice.ai/api/v1',
+  ...(proxyAgent ? { httpAgent: proxyAgent } : {}),
 });
 
 // ─── Vendor bids coming in from the marketplace ───────────────────────────────
@@ -171,12 +182,30 @@ async function preflightCheck(vendor, action_id) {
     throw new Error(`ICME checkIt failed (${res.status}): ${text}`);
   }
 
-  const result = await res.json();
-  // Actual response shape: { check_id, result: "SAT"|"UNSAT", detail, extracted, verification_time_ms }
-  // Derive blocked from result — UNSAT means the action violates policy
-  const blocked = result.result === 'UNSAT';
+  // ICME streams SSE — parse events and extract the final result
+  const body = await res.text();
+  let result = null;
+  for (const line of body.split('\n')) {
+    if (line.startsWith('data: ')) {
+      const data = line.slice(6).trim();
+      if (data === '[DONE]') continue;
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed.msg) console.log(`    [${parsed.msg}]`);
+        if (parsed.result) result = parsed;
+      } catch {}
+    }
+  }
+  if (!result) throw new Error('ICME checkIt: no result in SSE stream');
+  // Response includes: result (overall), z3_result, ar_result, llm_result, ar_detail
+  // AR may fail-closed on complex actions ("action could not be translated").
+  // When AR fails to translate (not a real policy violation), fall back to z3_result.
+  const arFailedToTranslate = result.ar_detail && result.ar_detail.includes('fail-closed');
+  const effectiveResult = arFailedToTranslate ? (result.z3_result || result.result) : result.result;
+  const blocked = effectiveResult === 'UNSAT';
 
-  console.log(`    Result:   ${result.result}`);
+  console.log(`    Result:   ${effectiveResult}${arFailedToTranslate ? ' (AR fail-closed, using Z3)' : ''}`);
+  console.log(`    Z3:       ${result.z3_result || 'N/A'}  AR: ${result.ar_result || 'N/A'}  LLM: ${result.llm_result || 'N/A'}`);
   console.log(`    Blocked:  ${blocked}`);
   console.log(`    Detail:   ${result.detail}`);
   console.log(`    Check ID: ${result.check_id}`);
@@ -184,7 +213,7 @@ async function preflightCheck(vendor, action_id) {
     console.log(`    Verified in: ${result.verification_time_ms}ms`);
   }
 
-  return { ...result, blocked };
+  return { ...result, result: effectiveResult, blocked };
 }
 
 // ─── 3. x402 Payment Gate ────────────────────────────────────────────────────

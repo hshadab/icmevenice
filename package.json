@@ -9,6 +9,7 @@
     "setup-policy": "node setup-policy.js"
   },
   "dependencies": {
+    "https-proxy-agent": "^8.0.0",
     "node-fetch": "^3.3.2",
     "openai": "^4.73.0"
   }
